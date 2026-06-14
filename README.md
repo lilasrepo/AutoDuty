@@ -1,72 +1,63 @@
-# AutoDuty
+# AutoDuty（繁中移植版 · TC12） / Traditional-Chinese Port
 
-<img align="right" width="150" height="150" src="logo.png">
+> 自動幫你跑副本。<br>
+> Runs dungeons for you.
 
-AutoDuty (AD) is a Dalamud plugin for FFXIV that serves as a tool to assist in the creation and following of paths through dungeons and duties. It's designed to enable automatic looping of instanced content with Duty Support, Trusts, or Squadrons.
+**繁體中文**：這是 **[AutoDuty](https://github.com/erdelf/AutoDuty)** 的繁體中文客戶端移植版，對應 **FFXIV 7.1 / yanmucorp Dalamud API12（.NET 9）**。本專案僅做相容性移植，**非官方、非原作維護**；所有原始功能與設計著作權歸原作者 **Herculezz、erdelf**。
 
-Support for it can be found in the [this channel](https://discord.com/channels/1001823907193552978/1236757595738476725) of the [Puni.sh Discord server](https://discord.gg/punishxiv).
+**English**: A Traditional-Chinese-client port of **[AutoDuty](https://github.com/erdelf/AutoDuty)** targeting **FFXIV 7.1 / yanmucorp Dalamud API12 (.NET 9)**. Compatibility port only — **unofficial and not maintained by the original author**. All original work © **Herculezz, erdelf**.
 
-_Unlicensed code, which follows [default copyright law](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository#choosing-the-right-license)_
+---
 
-# Dungeon Paths
+## 這是什麼 / About
 
-<img align="right" height="250" src="Assets/paths.png">
+自動帶你跑副本，支援盟友作戰（Trust）、隨從支援（Duty Support）、小隊（Squadron）、異聞副本（Variant）與一般副本，會自動尋路、戰鬥、推王。
 
-Each dungeon supported by AutoDuty has a pre-configured path laid out, which should complete the dungeon without any issues. If any issues are encountered, make sure to reach out in the [support Discord](https://discord.gg/punishxiv).
+Automatically runs duties for you — Trust, Duty Support, Squadrons, Variants and regular dungeons — handling navigation, combat and bosses.
 
-The paths will also run over all loot containers and, when configured, will pick up the loot and do something with it while either in between dungeon runs or after your set amount of runs are over.
+## 需要的前置插件 / Required plugins
 
-Creating paths is also supported and easily accomplished within AutoDuty by using the `Build` tab at the top. For path status, please refer to the [pinned spreadsheet](https://discord.com/channels/1001823907193552978/1236757595738476725/1243059104528994334) in the [AutoDuty channel](https://discord.com/channels/1001823907193552978/1236757595738476725) of the [support Discord](https://discord.gg/punishxiv).
+本插件需要以下插件才能運作（本插件庫皆提供 TC12 版）：<br>
+This plugin requires the following (all available as TC12 builds in this repo):
 
-# Automatic Leveling
+- **Boss Mod (TC12)** — 戰鬥處理 / combat
+- **vnavmesh (TC12)** — 自動尋路 / navigation
+- 一個循環插件（擇一）/ a rotation plugin (one of): **Wrath Combo (TC12)**、BossMod AutoRotation、RotationSolverReborn
 
-<img align="right" height="250" src="Assets/leveling.png">
+## 安裝 / Installation
 
-AutoDuty has a leveling feature that will continuously run you through the "correct" dungeon to level through. The dungeon is typically determined by path quality, support for boss fights, and obviously the level of the dungeon.
+**繁體中文**
+1. 使用 **XIVTCLauncher** 啟動繁體中文客戶端。
+2. 遊戲內輸入 `/xlsettings` → 切到 **Experimental** 分頁 → **Custom Plugin Repositories（自訂插件庫）**。
+3. 貼上下列網址並按 **+** 儲存：
+   ```
+   https://raw.githubusercontent.com/lilasrepo/DalamudPlugins/main/pluginmaster.json
+   ```
+4. 輸入 `/xlplugins`，搜尋 **AutoDuty (TC12)** → 安裝 → 啟用。
 
-With AutoDuty, you can level a job from 15 to the max level very quickly and fully AFK, provided you have the correct gear and the option in the AD configuration to automatically equip the best gear.
+**English**
+1. Launch the Traditional-Chinese client with **XIVTCLauncher**.
+2. In-game, type `/xlsettings` → **Experimental** tab → **Custom Plugin Repositories**.
+3. Add this URL and save with **+**:
+   ```
+   https://raw.githubusercontent.com/lilasrepo/DalamudPlugins/main/pluginmaster.json
+   ```
+4. Type `/xlplugins`, search **AutoDuty (TC12)** → Install → Enable.
 
-This plugin can also level trusts for you in the same way it levels your jobs. It can intelligently select trust members and level them all to max, fully AFK.
+## 對應版本 / Compatibility
 
-# Automations
+| 項目 / Item | 版本 / Version |
+|---|---|
+| 遊戲 / Game | FFXIV 7.1（繁中客戶端 / TC client） |
+| Dalamud | yanmucorp API12（.NET 9） |
+| 移植自上游 / Ported from upstream | v0.0.0.311 |
 
-AutoDuty supports a wide range of automations and integrations with other plugins. Below are just some of what AD can offer while automating instanced content:
+## 原作與授權 / Credits & License
 
-| Before runs | During the run | Between runs | After the runs |
-| -------- | -------- | -------- | -------- |
-| Move to an inn, house, or FC house <br /> Auto self- or NPC- repair <br /> Execute commands (i.e. SND scripts) <br /> Auto consume items | Loot treasure coffers <br /> Manage plugin states | Auto extract materia <br /> Auto desynth loot <br /> Auto turn in loot to GC <br /> Use AutoRetainer <br /> Auto equip best gear | Stop looping at a level <br /> Stop looping when you run out of rested XP <br /> Turn on AutoRetainer multi mode <br /> Shut down your computer |
+本專案 fork 自 **[erdelf/AutoDuty](https://github.com/erdelf/AutoDuty)**，授權沿用上游；所有原始功能著作權歸 **Herculezz、erdelf**。<br>
+Forked from **[erdelf/AutoDuty](https://github.com/erdelf/AutoDuty)**. License follows upstream; all original work © **Herculezz, erdelf**.
 
-<hr />
+## 免責聲明 / Disclaimer
 
-# Installation
-
-Add `https://puni.sh/api/repository/erdelf` to your plugin repositories and then search for `AutoDuty` in the Plugin Installer to install AutoDuty.
-
-Settings can be accessed via the Plugin Installer or using the chat command `/ad`.
-
-## Required Plugins
-
-Additionally, the following plugins are required. Right-click the name of the plugin and copy the URL to use it to add to your repositories in-game.
-
-- [vnavmesh](https://puni.sh/api/repository/veyn): Automatic navigation with waypoints
-- [Wrath Combo](https://github.com/PunishXIV/WrathCombo) or [Rotation Solver Reborn](https://raw.githubusercontent.com/FFXIV-CombatReborn/CombatRebornRepo/main/pluginmaster.json): Automatic rotation execution, all jobs supported
-- [Veyn's Boss Mod](https://puni.sh/api/repository/veyn) or [BossmodReborn](https://raw.githubusercontent.com/FFXIV-CombatReborn/CombatRebornRepo/main/pluginmaster.json): Automatic fight execution for bosses
-
-## Optional Plugins
-
-The following plugins are optional. They integrate with AutoDuty well and in some cases can be triggered by AD itself.
-
-- [Gearsetter](https://plugins.carvel.li): Automatically finds equipment upgrades in your inventory
-- [AutoRetainer](https://love.puni.sh/ment.json): Automatically manages your retainers and submersibles as well as sends them out on ventures
- 
-# Getting help
-
-When you've found a bug or think you have an issue with the plugin, please ask in [this channel](https://discord.com/channels/1001823907193552978/1236757595738476725) in the [Puni.sh Discord server](https://discord.gg/punishxiv). It might be a known issue or people might be able to help you quickly. Additionally, sometimes it might be an issue with one of the required plugins. Users in Discord will be able to help triage the issue and send you to the right place.
-
-Best practice is to not say "I died in this dungeon and I don't know why." Please make sure to include as much detail as possible. What boss were you on? Did you get stuck in a specific spot?
-
-For support with Veyn's Boss Mod and vnavmesh, please ask in [this channel](https://discord.com/channels/1001823907193552978/1191076246860349450) in the [Puni.sh Discord server](https://discord.gg/punishxiv),
-or support for Wrath Combo in [this channel](https://discord.com/channels/1001823907193552978/1271175781569003590) in the Puni.sh server. For support with BossModReborn and 
-Rotation Solver Reborn, please ask in the [Combat Reborn Discord server](https://discord.gg/p54TZMPnC9).
-
-Lastly, feel free to create issues with feature requests and bug reports.
+第三方插件，使用風險自負。**移植相關問題請回報到本 repo 的 Issues，請勿打擾上游原作者。**<br>
+Third-party plugin — use at your own risk. **For port-specific issues please open an Issue here; do not contact the upstream author.**
