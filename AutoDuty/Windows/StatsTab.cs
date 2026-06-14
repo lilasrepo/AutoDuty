@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Numerics;
-using Dalamud.Bindings.ImGui;
+using ImGuiNET;
 using Dalamud.Interface;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility.Raii;
@@ -104,9 +104,14 @@ internal static class StatsTab
 
         ImGuiTableSortSpecsPtr sortSpecs = ImGui.TableGetSortSpecs();
 
-        for (int i = 0; i < sortSpecs.SpecsCount; i++)
+        // porting-note: API12 ImGui.NET ImGuiTableSortSpecsPtr.Specs returns single ptr (not array);
+        // pointer-walk via Span over SpecsCount entries.
+        unsafe
         {
-            ImGuiTableColumnSortSpecs spec = sortSpecs.Specs[i];
+            var firstSpec = (ImGuiTableColumnSortSpecs*)sortSpecs.Specs.NativePtr;
+            for (int i = 0; i < sortSpecs.SpecsCount; i++)
+            {
+                ImGuiTableColumnSortSpecs spec = firstSpec[i];
 
             if(spec.SortDirection == ImGuiSortDirection.None)
                 continue;
@@ -142,6 +147,7 @@ internal static class StatsTab
                     Order(ddr => ddr.Deaths ?? -1);
                     break;
             }
+            }
         }
 
         ImGui.TableHeadersRow();
@@ -170,7 +176,7 @@ internal static class StatsTab
         ImGui.TableNextColumn();
         TimeSpan durationFilterAdjust = new(0, 0, io.KeyShift ? 60 : io.KeyCtrl ? 10 : 1);
 
-        if (ImGui.InputText("##DurationFilterMinText", ref durationFilterMinTemp))
+        if (ImGui.InputText("##DurationFilterMinText", ref durationFilterMinTemp, 32))
         {
             if (TimeSpan.TryParseExact(durationFilterMinTemp, TimeSpanFormat, CultureInfo.CurrentCulture, out TimeSpan durationNew))
             {
@@ -199,7 +205,7 @@ internal static class StatsTab
         }
 
 
-        if (ImGui.InputText("##DurationFilterMaxText", ref durationFilterMaxTemp))
+        if (ImGui.InputText("##DurationFilterMaxText", ref durationFilterMaxTemp, 32))
         {
             if (TimeSpan.TryParseExact(durationFilterMaxTemp, TimeSpanFormat, CultureInfo.CurrentCulture, out TimeSpan durationNew))
             {
@@ -232,7 +238,7 @@ internal static class StatsTab
         ImGui.TableNextColumn();
 
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-        using (ImRaii.ComboDisposable endObject = ImRaii.Combo("##StatsTabFilterTerritory", territoryFilter.Count is >= 1 or 0 ? 
+        using (var endObject = ImRaii.Combo("##StatsTabFilterTerritory", territoryFilter.Count is >= 1 or 0 ? 
                                                                                                    Loc.Get("StatsTab.SelectedMultiCount", territoryFilter.Count) :
                                                                                                    TerritoryName(territoryFilter.First())))
         {
@@ -268,7 +274,7 @@ internal static class StatsTab
         ImGui.TableNextColumn();
 
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-        using (ImRaii.ComboDisposable endObject = ImRaii.Combo("##StatsTabFilterChar", charFilter.Count is >= 1 or 0 ?
+        using (var endObject = ImRaii.Combo("##StatsTabFilterChar", charFilter.Count is >= 1 or 0 ?
                                                                                            Loc.Get("StatsTab.SelectedMultiCount", charFilter.Count) :
                                                                                            CharName(charFilter.First())))
         {
@@ -304,7 +310,7 @@ internal static class StatsTab
 
         ImGui.TableNextColumn();
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-        using (ImRaii.ComboDisposable endObject = ImRaii.Combo("##StatsTabFilterIlvl", $"{ilvlFilterMin} - {ilvlFilterMax}"))
+        using (var endObject = ImRaii.Combo("##StatsTabFilterIlvl", $"{ilvlFilterMin} - {ilvlFilterMax}"))
         {
             if (ImGui.IsItemClicked(ImGuiMouseButton.Right))
             {
@@ -319,7 +325,7 @@ internal static class StatsTab
         ImGui.TableNextColumn();
 
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-        using (ImRaii.ComboDisposable endObject = ImRaii.Combo("##StatsTabFilterJob", jobFilter.ToLocalizedString()))
+        using (var endObject = ImRaii.Combo("##StatsTabFilterJob", jobFilter.ToLocalizedString()))
         {
             if (ImGui.IsItemClicked(ImGuiMouseButton.Right))
             {
@@ -336,7 +342,7 @@ internal static class StatsTab
 
         ImGui.TableNextColumn();
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-        using (ImRaii.ComboDisposable endObject = ImRaii.Combo("##StatsTabFilterDeaths", $"{deathsFilterMin} - {deathsFilterMax}"))
+        using (var endObject = ImRaii.Combo("##StatsTabFilterDeaths", $"{deathsFilterMin} - {deathsFilterMax}"))
         {
             if (ImGui.IsItemClicked(ImGuiMouseButton.Right))
             {

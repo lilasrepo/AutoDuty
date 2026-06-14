@@ -25,8 +25,8 @@ namespace AutoDuty.Helpers
 
     internal static class ObjectHelper
     {
-        internal static bool TryGetObjectByDataId(uint dataId, out IGameObject? gameObject) => (gameObject = Svc.Objects.OrderBy(GetDistanceToPlayer).FirstOrDefault(x => x.BaseId == dataId)) != null;
-        internal static bool TryGetObjectByDataId(uint dataId, Func<IGameObject, bool> condition, out IGameObject? gameObject) => (gameObject = Svc.Objects.OrderBy(GetDistanceToPlayer).FirstOrDefault(x => x.BaseId == dataId && condition(x))) != null;
+        internal static bool TryGetObjectByDataId(uint dataId, out IGameObject? gameObject) => (gameObject = Svc.Objects.OrderBy(GetDistanceToPlayer).FirstOrDefault(x => x.DataId == dataId)) != null;
+        internal static bool TryGetObjectByDataId(uint dataId, Func<IGameObject, bool> condition, out IGameObject? gameObject) => (gameObject = Svc.Objects.OrderBy(GetDistanceToPlayer).FirstOrDefault(x => x.DataId == dataId && condition(x))) != null;
 
         internal static List<IGameObject>? GetObjectsByObjectKind(ObjectKind objectKind) => [.. Svc.Objects.OrderBy(GetDistanceToPlayer).Where(o => o.ObjectKind == objectKind)];
 
@@ -40,8 +40,8 @@ namespace AutoDuty.Helpers
 
         internal static IGameObject? GetObjectByName(string name) => Svc.Objects.OrderBy(GetDistanceToPlayer).FirstOrDefault(o => o.Name.TextValue.Equals(name, StringComparison.CurrentCultureIgnoreCase));
 
-        internal static IGameObject? GetObjectByDataId(uint id) => Svc.Objects.OrderBy(GetDistanceToPlayer).FirstOrDefault(o => o.BaseId == id);
-        internal static IGameObject? GetObjectByDataIds(params uint[] ids) => Svc.Objects.OrderBy(GetDistanceToPlayer).FirstOrDefault(o => ids.Contains(o.BaseId));
+        internal static IGameObject? GetObjectByDataId(uint id) => Svc.Objects.OrderBy(GetDistanceToPlayer).FirstOrDefault(o => o.DataId == id);
+        internal static IGameObject? GetObjectByDataIds(params uint[] ids) => Svc.Objects.OrderBy(GetDistanceToPlayer).FirstOrDefault(o => ids.Contains(o.DataId));
 
         internal static List<IGameObject>? GetObjectsByPartialName(string name) => [.. Svc.Objects.OrderBy(GetDistanceToPlayer).Where(o => o.Name.TextValue.Contains(name, StringComparison.CurrentCultureIgnoreCase))];
 
@@ -82,7 +82,7 @@ namespace AutoDuty.Helpers
             IEnumerable<Buddy.BuddyMember>? buddies = UIState.Instance()->Buddy.BattleBuddies.ToArray().Where(x => x.DataId != 0);
             foreach (Buddy.BuddyMember buddy in buddies)
             {
-                IGameObject? gameObject = Svc.Objects.FirstOrDefault(x => x.EntityId == buddy.EntityId);
+                IGameObject? gameObject = Svc.Objects.FirstOrDefault(x => x.GameObjectId == buddy.EntityId);
 
                 if (gameObject == null) 
                     continue;
@@ -114,12 +114,12 @@ namespace AutoDuty.Helpers
             return distance;
         }
 
-        internal static BNpcBase? GetObjectNPC(IGameObject gameObject) => Svc.Data.GetExcelSheet<BNpcBase>()?.GetRow(gameObject.BaseId) ?? null;
+        internal static BNpcBase? GetObjectNPC(IGameObject gameObject) => Svc.Data.GetExcelSheet<BNpcBase>()?.GetRow(gameObject.DataId) ?? null;
 
         //From RotationSolver
         internal static bool IsBossFromIcon(IGameObject gameObject) => GetObjectNPC(gameObject)?.Rank is 1 or 2 or 6;
 
-        internal static bool IsBoss(IGameObject gameObject) => IsBossFromIcon(gameObject) || BossMod_IPCSubscriber.HasModuleByDataId(gameObject.BaseId);
+        internal static bool IsBoss(IGameObject gameObject) => IsBossFromIcon(gameObject) || BossMod_IPCSubscriber.HasModuleByDataId(gameObject.DataId);
 
         internal static unsafe void InteractWithObject(IGameObject? gameObject, bool face = true)
         {

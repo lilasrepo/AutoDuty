@@ -1,7 +1,7 @@
 ﻿using AutoDuty.Helpers;
 using AutoDuty.IPC;
 using AutoDuty.Managers;
-using Dalamud.Bindings.ImGui;
+using ImGuiNET;
 using Dalamud.Interface;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
@@ -68,7 +68,7 @@ public sealed class MainWindow : Window, IDisposable
 
     internal static void LoopsConfig()
     {
-        using ImRaii.DisabledDisposable _ = ImRaii.Disabled(MultiboxUtility.Config.MultiBox && !MultiboxUtility.Config.Host);
+        using var _ = ImRaii.Disabled(MultiboxUtility.Config.MultiBox && !MultiboxUtility.Config.Host);
 
         if ((AutoDuty.Configuration.UseSliderInputs  && ImGui.SliderInt("Times", ref AutoDuty.Configuration.LoopTimes, 1, 100)) ||
             (!AutoDuty.Configuration.UseSliderInputs && ImGui.InputInt("Times", ref AutoDuty.Configuration.LoopTimes, 1)))
@@ -374,7 +374,10 @@ public sealed class MainWindow : Window, IDisposable
             if (color != null) 
                 ImGui.PushStyleColor(ImGuiCol.Tab, color.Value);
 
-            if ((valid || name == "Info") && ImGui.BeginTabItem($"{Loc.Get($"MainWindow.Tabs.{name}")}###MainWindowTab{name}", openTab == name ? ImGuiTabItemFlags.SetSelected : ImGuiTabItemFlags.None))
+            // porting-note: API12 ImGui.NET BeginTabItem requires `ref bool open` for the 2-arg form;
+            // bridge with a discardable bool open flag.
+            bool tabOpen = true;
+            if ((valid || name == "Info") && ImGui.BeginTabItem($"{Loc.Get($"MainWindow.Tabs.{name}")}###MainWindowTab{name}", ref tabOpen, openTab == name ? ImGuiTabItemFlags.SetSelected : ImGuiTabItemFlags.None))
             {
                 if (color != null) 
                     ImGui.PopStyleColor();
@@ -408,7 +411,7 @@ public sealed class MainWindow : Window, IDisposable
     private static (string, Action, Vector4?, bool)[] TabList =>
     [
         ("Main", MainTab.Draw, null, false),
-        ("Build", BuildTab.DrawBuildTab, null, false),
+        ("Build", BuildTab.Draw, null, false),
         ("Paths", PathsTab.Draw, null, false),
         ("Config", ConfigTab.Draw, null, false),
         ("Info", InfoTab.Draw, null, false),

@@ -17,7 +17,13 @@ namespace AutoDuty.Helpers
     {
         internal static Dictionary<uint, Content> DictionaryContent { get; set; } = [];
         
-        private static List<uint> ListGCArmyContent { get; set; } = [1245, 1039, 1041, 1042, 1330, 1331, 0/*159*/, 160, 349, 362, 188, 1064, 1066, 430, 510]; //Wanderer's Palace out for now.
+        // porting-note(api12/TC): game-7.1 squadron territory IDs, NOT HEAD's game-7.5 IDs. SE re-IDed
+        // these ARR dungeons in a later patch (162->1245 Halatali, 171->1330 Dzemael Darkhold,
+        // 172->1331 Aurum Vale, 159 dropped); TC game 7.1 still uses the originals, so the 7.5 IDs match
+        // no TC content and the dungeons vanish from the squadron list. Order mirrors the in-game
+        // GcArmyCapture mission list (GCArmyIndex is the row passed to FireCallBack), so this is TC_ok's
+        // exact list verbatim. Re-apply each refresh — a 3-way merge will re-take HEAD's 7.5 IDs.
+        private static List<uint> ListGCArmyContent { get; set; } = [162, 1039, 1041, 1042, 171, 172, 159, 160, 349, 362, 188, 1064, 1066, 430, 510];
         
         private static List<uint> ListVVDContent { get; set; } = [1069, 1137, 1176, 1315]; //[1069, 1075, 1076, 1137, 1155, 1156, 1176, 1179, 1180]; *Criterions
 

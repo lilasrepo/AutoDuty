@@ -52,29 +52,12 @@ namespace AutoDuty.Managers
 
         public static unsafe bool SelectPath(int option)
         {
+            // TODO(api12): walk-back ECommons doesn't expose AddonMaster.VVDVoteRoute reader.
+            // Variant Dungeon vote-route automation is disabled; return false to indicate "addon not handled".
             if (!GenericHelpers.TryGetAddonByName("VVDVoteRoute", out AtkUnitBase* addon) || !addon->IsReady)
                 return false;
-
-            AddonMaster.VVDVoteRoute voteRoute = new(addon);
-            if (option >= voteRoute.EntryCount)
-            {
-                Svc.Log.Error($"Failed to select path, option {option} is out of range. Entry count: {voteRoute.EntryCount}");
-                return true;
-            }
-
-            if (option == 0)
-            {
-                Plugin.VariantPath = voteRoute.SelectedEntryNPC switch
-                {
-                    1 => 1,
-                    2 => 10,
-                    3 => 6,
-                    _ => 1
-                };
-            }
-
-            voteRoute.Entries[option].Select();
-            return true;
+            Svc.Log.Warning("VVDVoteRoute path selection not supported in API12 build.");
+            return false;
         }
     }
 }

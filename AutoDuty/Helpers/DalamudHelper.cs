@@ -1,44 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+// TODO(api12): Dalamud.Plugin.VersionInfo namespace + IDalamudVersionInfo + Svc.PluginInterface.GetDalamudVersion() are API15-only.
+// AutoDuty uses this only to detect staging Dalamud builds; for TC client we always return false.
+using System;
 
 namespace AutoDuty.Helpers
 {
-    using Dalamud.Plugin.VersionInfo;
-    using ECommons;
-    using ECommons.DalamudServices;
-
     internal static class DalamudHelper
     {
-        private static  bool stagingChecked = false;
-        private static bool isStaging      = false;
-        public static bool IsOnStaging()
-        {
-            if (stagingChecked)
-                return isStaging;
-
-            try
-            {
-                IDalamudVersionInfo v = Svc.PluginInterface.GetDalamudVersion();
-                if (v.BetaTrack.Equals("release", StringComparison.CurrentCultureIgnoreCase))
-                {
-                    stagingChecked = true;
-                    isStaging      = false;
-                    return false;
-                }
-                else
-                {
-                    stagingChecked = false;
-                    isStaging      = true;
-                    return true;
-                }
-            }
-            catch (Exception)
-            {
-                stagingChecked = true;
-                isStaging      = false;
-                return false;
-            }
-        }
+        public static bool IsOnStaging() => false;
     }
 }

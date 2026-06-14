@@ -6,7 +6,7 @@
     using System.Numerics;
     using Dalamud.Interface.Utility.Raii;
     using ECommons.ExcelServices;
-    using Dalamud.Bindings.ImGui;
+    using ImGuiNET;
 
     public static class Enums
     {
@@ -125,6 +125,7 @@
             Ranged_Magical = 6,
             Disciple_Of_The_Land = 7,
             Disciple_Of_The_Hand = 8,
+            NonCombat = 9, // porting-note: HEAD added; alias for Disciple_Of_The_Land/Hand callsites that fall back here
         }
 
         public enum LootMethod : int

@@ -33,7 +33,7 @@ using System.Numerics;
 
 namespace AutoDuty;
 
-using Dalamud.Bindings.ImGui;
+using ImGuiNET;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Data;
 using ECommons.Automation.NeoTaskManager;
@@ -229,11 +229,15 @@ public sealed class AutoDuty : IDalamudPlugin
             field = value;
 
 
-            if (Configuration.DisableRenderWhileActive)
-                if(field == PluginState.None)
-                    RenderDisableManager.RemoveRequest();
-                else
-                    RenderDisableManager.PlaceRequest();
+            // TODO(api12): RenderDisableManager (ECommons.GameFunctions, upstream 9a859875 "Disabling 3D
+            // rendering while running") is unavailable in walk-back ECommons and uses a hardcoded game-7.5
+            // Render Manager offset (230232) that would be wrong/crash-prone on TC game 7.1. Non-essential
+            // render-disable optimization stubbed; restore once a 7.1-verified offset + ECommons gap-fill exist.
+            //if (Configuration.DisableRenderWhileActive)
+            //    if(field == PluginState.None)
+            //        RenderDisableManager.RemoveRequest();
+            //    else
+            //        RenderDisableManager.PlaceRequest();
 
         }
     } = PluginState.None;
@@ -261,7 +265,7 @@ public sealed class AutoDuty : IDalamudPlugin
     private           LevelingMode             levelingModeEnum  = LevelingMode.None;
     private const     string                   CommandName       = "/autoduty";
     private readonly  DirectoryInfo            configDirectory   = null!;
-    public readonly   ActionsManager           actions           = null!;
+    private readonly  ActionsManager           actions           = null!;
     private readonly  SquadronManager          squadronManager   = null!;
     private readonly  VariantManager           variantManager    = null!;
     private readonly  OverrideAFK              overrideAfk       = null!;
@@ -287,7 +291,7 @@ public sealed class AutoDuty : IDalamudPlugin
 
             IPCBase.DefaultWrapper = SafeWrapper.IPCException;
             ECommonsMain.Init(PluginInterface, Plugin, Module.DalamudReflector, Module.ObjectFunctions);
-            PctService.Initialize(PluginInterface);
+            PictoService.Initialize(PluginInterface);
 
             this.isDev = PluginInterface.IsDev;
 
@@ -338,6 +342,7 @@ public sealed class AutoDuty : IDalamudPlugin
             this.squadronManager = new SquadronManager(this.taskManager);
             this.variantManager  = new VariantManager(this.taskManager);
             this.actions         = new ActionsManager(Plugin, this.taskManager);
+            BuildTab.ActionsList  = this.actions.actionsList;
             this.overrideCamera   = new OverrideCamera();
             this.Overlay          = new Overlay();
             this.MainWindow       = new MainWindow();
@@ -520,8 +525,8 @@ public sealed class AutoDuty : IDalamudPlugin
                                                                                       else
                                                                                           obj = ObjectHelper.GetObjectByName(Svc.Targets.Target?.Name.TextValue ?? "");
 
-                                                                                      Svc.Log.Info($"{obj?.BaseId}");
-                                                                                      ImGui.SetClipboardText($"{obj?.BaseId}");
+                                                                                      Svc.Log.Info($"{obj?.DataId}");
+                                                                                      ImGui.SetClipboardText($"{obj?.DataId}");
                                                                                   }),
                 (["leveling"], "Enables leveling mode (0 = disabled)", argsArray =>
                                                                        {
@@ -686,7 +691,7 @@ public sealed class AutoDuty : IDalamudPlugin
                                                                                                                    {
                                                                                                                        CID   = Player.CID,
                                                                                                                        Name  = Player.Name,
-                                                                                                                       World = Player.CurrentWorldName
+                                                                                                                       World = Player.CurrentWorld
                                                                                                                    });
 
                                                           if (Configuration.ShowOverlay &&
@@ -704,7 +709,7 @@ public sealed class AutoDuty : IDalamudPlugin
     {
         if (PlayerHelper.IsValid)
         {
-            using PctDrawList? drawList = PctService.Draw();
+            using PctDrawList? drawList = PictoService.Draw();
 
             if (drawList != null)
             {
@@ -738,10 +743,8 @@ public sealed class AutoDuty : IDalamudPlugin
                                 if (curAction.Name.Equals("KillInRange") && int.TryParse(curAction.Arguments[0], out int radius) && radius > 0)
                                 {
                                     uint colorU32 = ImGui.GetColorU32(new Vector4(0.4f, 0.2f, 0f, alpha*0.1f));
-                                    drawList.AddCircleFilled(curAction.Position, radius, colorU32, mainColor, p: new PctDxParams()
-                                                                                                                 {
-                                                                                                                     ProjectionHeight = 5f,
-                                                                                                                 });
+                                    // TODO(api12): upstream adds p: new PctDxParams { ProjectionHeight = 5f } — walk-back Pictomancy has no PctDxParams overload (cosmetic projection height).
+                                    drawList.AddCircleFilled(curAction.Position, radius, colorU32, mainColor);
                                 }
                             }
                             lastPos = curAction.Position;
@@ -754,13 +757,14 @@ public sealed class AutoDuty : IDalamudPlugin
 
     private DateTime lastDutyStart = DateTime.MinValue;
 
-    private void DutyState_DutyStarted(IDutyStateEventArgs args)
+    // TODO(api12): IDutyStateEventArgs is API15-only; API12 IDutyState events expose (object? sender, ushort territory).
+    private void DutyState_DutyStarted(object? sender, ushort territoryType)
     {
         this.dutyState         = DutyState.DutyStarted;
         this.lastDutyStart     = DateTime.UtcNow;
         DeathHelper.deathCount = 0;
 
-        if (ContentHelper.DictionaryContent.TryGetValue(Player.Territory.RowId, out Content? content) && content.DutyModes.HasFlag(DutyMode.Regular))
+        if (ContentHelper.DictionaryContent.TryGetValue(Player.Territory, out Content? content) && content.DutyModes.HasFlag(DutyMode.Regular))
         {
             if(ConfigurationMain.Instance.dutyCountResetDate <= DateTime.UtcNow)
                 ConfigurationMain.Instance.dutyCountSinceReset.Clear();
@@ -775,9 +779,9 @@ public sealed class AutoDuty : IDalamudPlugin
         }
     }
 
-    private void DutyState_DutyWiped(IDutyStateEventArgs       args) => this.dutyState = DutyState.DutyWiped;
-    private void DutyState_DutyRecommenced(IDutyStateEventArgs args) => this.dutyState = DutyState.DutyRecommenced;
-    private void DutyState_DutyCompleted(IDutyStateEventArgs args)
+    private void DutyState_DutyWiped(object? sender, ushort territoryType) => this.dutyState = DutyState.DutyWiped;
+    private void DutyState_DutyRecommenced(object? sender, ushort territoryType) => this.dutyState = DutyState.DutyRecommenced;
+    private void DutyState_DutyCompleted(object? sender, ushort territoryType)
     {
         Svc.Log.Warning("Duty Done");
         this.dutyState = DutyState.DutyComplete;
@@ -787,7 +791,7 @@ public sealed class AutoDuty : IDalamudPlugin
 
             ConfigurationMain.StatData stats = ConfigurationMain.Instance.stats;
 
-            stats.dutyRecords.Add(new DutyDataRecord(DateTime.UtcNow, timeSpan, Player.Territory.RowId, Player.CID, InventoryHelper.CurrentItemLevel, Player.Job, DeathHelper.deathCount));
+            stats.dutyRecords.Add(new DutyDataRecord(DateTime.UtcNow, timeSpan, Player.Territory, Player.CID, InventoryHelper.CurrentItemLevel, Player.Job, DeathHelper.deathCount));
             stats.dungeonsRun++;
             Configuration.Save();
             StatsTab.refilter = true;
@@ -877,7 +881,7 @@ public sealed class AutoDuty : IDalamudPlugin
         }
     }
 
-    private void ClientState_TerritoryChanged(uint t)
+    private void ClientState_TerritoryChanged(ushort t)
     {
         if (MultiboxUtility.Config.MultiBox)
         {
@@ -1071,7 +1075,7 @@ public sealed class AutoDuty : IDalamudPlugin
                 if (Configuration.ExecuteCommandsPreLoop)
                 {
                     this.taskManager.Enqueue(() => Svc.Log.Debug($"ExecutingCommandsPreLoop, executing {Configuration.CustomCommandsTermination.Count} commands"));
-                    Configuration.CustomCommandsPreLoop.Each(x => this.taskManager.Enqueue(() => Chat.ExecuteCommand(x), "Run-ExecuteCommandsPreLoop"));
+                    Configuration.CustomCommandsPreLoop.Each(x => this.taskManager.Enqueue(() => Chat.Instance.ExecuteCommand(x), "Run-ExecuteCommandsPreLoop"));
                 }
 
                 if (Configuration.AutoDutyModeEnum == AutoDutyMode.Playlist && Plugin.PlaylistCurrentEntry != null)
@@ -1152,7 +1156,7 @@ public sealed class AutoDuty : IDalamudPlugin
             if (Configuration.ExecuteCommandsBetweenLoop)
             {
                 this.taskManager.Enqueue(() => Svc.Log.Debug($"ExecutingCommandsBetweenLoops, executing {Configuration.CustomCommandsBetweenLoop.Count} commands"));
-                Configuration.CustomCommandsBetweenLoop.Each(x => Chat.ExecuteCommand(x));
+                Configuration.CustomCommandsBetweenLoop.Each(x => Chat.Instance.ExecuteCommand(x));
                 this.taskManager.EnqueueDelay(1000);
             }
 
@@ -1380,7 +1384,7 @@ public sealed class AutoDuty : IDalamudPlugin
             if (Configuration.ExecuteCommandsTermination)
             {
                 this.taskManager.Enqueue(() => Svc.Log.Debug($"ExecutingCommandsTermination, executing {Configuration.CustomCommandsTermination.Count} commands"));
-                Configuration.CustomCommandsTermination.Each(x => Chat.ExecuteCommand(x));
+                Configuration.CustomCommandsTermination.Each(x => Chat.Instance.ExecuteCommand(x));
             }
 
             if (Configuration.PlayEndSound)
@@ -1418,7 +1422,7 @@ public sealed class AutoDuty : IDalamudPlugin
                                                      //hell if I know
                                                  }
                                              }, "Enqueuing SystemShutdown");
-                    this.taskManager.Enqueue(() => Chat.ExecuteCommand($"/xlkill"), "Killing the game");
+                    this.taskManager.Enqueue(() => Chat.Instance.ExecuteCommand($"/xlkill"), "Killing the game");
                     break;
                 }
                 case TerminationMode.Kill_Client:
@@ -1430,7 +1434,7 @@ public sealed class AutoDuty : IDalamudPlugin
                             Configuration.Save();
                     }
 
-                    this.taskManager.Enqueue(() => Chat.ExecuteCommand($"/xlkill"), "Killing the game");
+                    this.taskManager.Enqueue(() => Chat.Instance.ExecuteCommand($"/xlkill"), "Killing the game");
                     break;
                 }
                 case TerminationMode.Logout:
@@ -1444,17 +1448,17 @@ public sealed class AutoDuty : IDalamudPlugin
 
                     this.taskManager.Enqueue(() => PlayerHelper.IsReady);
                     this.taskManager.EnqueueDelay(2000);
-                    this.taskManager.Enqueue(() => Chat.ExecuteCommand($"/logout"));
+                    this.taskManager.Enqueue(() => Chat.Instance.ExecuteCommand($"/logout"));
                     this.taskManager.Enqueue(() => AddonHelper.ClickSelectYesno());
                     break;
                 }
                 case TerminationMode.Start_AR_Multi_Mode:
                     this.taskManager.Enqueue(() => Svc.Log.Debug($"Starting AR Multi Mode"));
-                    this.taskManager.Enqueue(() => Chat.ExecuteCommand($"/ays multi e"));
+                    this.taskManager.Enqueue(() => Chat.Instance.ExecuteCommand($"/ays multi e"));
                     break;
                 case TerminationMode.Start_AR_Night_Mode:
                     this.taskManager.Enqueue(() => Svc.Log.Debug($"Starting AR Night Mode"));
-                    this.taskManager.Enqueue(() => Chat.ExecuteCommand($"/ays night e"));
+                    this.taskManager.Enqueue(() => Chat.Instance.ExecuteCommand($"/ays night e"));
                     break;
                 case TerminationMode.Do_Nothing:
                 default:
@@ -1627,7 +1631,7 @@ public sealed class AutoDuty : IDalamudPlugin
 
         if (!VNavmesh_IPCSubscriber.SimpleMove_PathfindInProgress && !VNavmesh_IPCSubscriber.Path_IsRunning)
         {
-            Chat.ExecuteCommand("/automove off");
+            Chat.Instance.ExecuteCommand("/automove off");
             VNavmesh_IPCSubscriber.Path_SetTolerance(0.25f);
             if (this.pathAction is { Name: "MoveTo", Arguments.Count: > 0 } && bool.TryParse(this.pathAction.Arguments[0], out bool useMesh) && !useMesh)
                 VNavmesh_IPCSubscriber.Path_MoveTo([this.pathAction.Position], false);
@@ -1680,11 +1684,11 @@ public sealed class AutoDuty : IDalamudPlugin
                     {
                         BossMod_IPCSubscriber.SetMovement(false);
                         this.SetRotationPluginSettings(false, false, true);
-                        ActionManager.Instance()->UseAction(ActionType.Action, 6); // Chat.ExecuteCommand("/return");
+                        ActionManager.Instance()->UseAction(ActionType.Action, 6); // Chat.Instance.ExecuteCommand("/return");
                         SchedulerHelper.ScheduleAction("StuckHelperReturnInsurance", () =>
                                                                                      {
                                                                                          VNavmesh_IPCSubscriber.Path_Stop();
-                                                                                         ActionManager.Instance()->UseAction(ActionType.Action, 6); //Chat.ExecuteCommand("/return");
+                                                                                         ActionManager.Instance()->UseAction(ActionType.Action, 6); //Chat.Instance.ExecuteCommand("/return");
                                                                                      }, () => ActionManager.Instance()->CastActionId != 6 && 
                                                                                               ActionManager.Instance()->GetActionStatus(ActionType.Action, 6) == 0 && PlayerHelper.IsReady, false);
 
@@ -2096,14 +2100,21 @@ public sealed class AutoDuty : IDalamudPlugin
 
     internal static void BMRoleChecks()
     {
-        //RoleBased Positional
-        if (PlayerHelper.IsValid && Configuration.PositionalRoleBased && Configuration.PositionalEnum != (Player.ClassJob.Value.GetJobRole() == JobRole.Melee ? Positional.Rear : Positional.Any))
+        // porting-note: walk-back ECommons Player.Job is enum (not RowRef<ClassJob>). Resolve via Lumina lookup.
+        JobRole walkbackPlayerJobRole()
         {
-            Configuration.PositionalEnum = (Player.ClassJob.Value.GetJobRole() == JobRole.Melee ? Positional.Rear : Positional.Any);
+            ClassJob? cj = Svc.Data.GetExcelSheet<ClassJob>().GetRowOrDefault((uint)Player.Job);
+            return cj?.GetJobRole() ?? JobRole.NonCombat;
+        }
+
+        //RoleBased Positional
+        if (PlayerHelper.IsValid && Configuration.PositionalRoleBased && Configuration.PositionalEnum != (walkbackPlayerJobRole() == JobRole.Melee ? Positional.Rear : Positional.Any))
+        {
+            Configuration.PositionalEnum = (walkbackPlayerJobRole() == JobRole.Melee ? Positional.Rear : Positional.Any);
             Configuration.Save();
         }
 
-        ClassJob classJob = Player.ClassJob.Value;
+        ClassJob classJob = Svc.Data.GetExcelSheet<ClassJob>().GetRowOrDefault((uint)Player.Job) ?? default;
 
         //RoleBased MaxDistanceToTarget
         float maxDistanceToTarget = (classJob.GetJobRole() is JobRole.Melee or JobRole.Tank ? 
@@ -2174,7 +2185,7 @@ public sealed class AutoDuty : IDalamudPlugin
     {
         if (this.Interactables.Count == 0) return;
 
-        IEnumerable<IGameObject> list = Svc.Objects.Where(x => this.Interactables.Contains(x.BaseId));
+        IEnumerable<IGameObject> list = Svc.Objects.Where(x => this.Interactables.Contains(x.DataId));
 
         if (!list.Any()) return;
 
@@ -2317,20 +2328,22 @@ public sealed class AutoDuty : IDalamudPlugin
 
     public void Dispose()
     {
-        GitHubHelper.Dispose();
-        this.StopAndResetAll();
-        MultiboxUtility.Config?.MultiBox =  false;
+        // porting-note: defensive try around StopAndResetAll so a partially-initialized instance
+        // (e.g. ctor threw before Overlay/MainWindow assignment) can still tear down.
+        try { GitHubHelper.Dispose(); } catch (Exception ex) { Svc.Log?.Warning($"Dispose GitHubHelper: {ex.Message}"); }
+        try { this.StopAndResetAll(); } catch (Exception ex) { Svc.Log?.Warning($"Dispose StopAndResetAll: {ex.Message}"); }
+        try { if (MultiboxUtility.Config != null) MultiboxUtility.Config.MultiBox = false; } catch { }
         Svc.Framework.Update             -= this.Framework_Update;
         Svc.Framework.Update             -= SchedulerHelper.ScheduleInvoker;
         FileHelper.FileSystemWatcher?.Dispose();
         FileHelper.fileWatcher?.Dispose();
         this.windowSystem?.RemoveAllWindows();
-        ECommonsMain.Dispose();
+        try { ECommonsMain.Dispose(); } catch (Exception ex) { Svc.Log?.Warning($"Dispose ECommonsMain: {ex.Message}"); }
         this.MainWindow?.Dispose();
         this.overrideCamera?.Dispose();
         Svc.ClientState.TerritoryChanged -= this.ClientState_TerritoryChanged;
         Svc.Condition.ConditionChange    -= this.Condition_ConditionChange;
-        PctService.Dispose();
+        try { PictoService.Dispose(); } catch { }
         PluginInterface.UiBuilder.Draw   -= this.UiBuilderOnDraw;
         Svc.Commands.RemoveHandler(CommandName);
     }

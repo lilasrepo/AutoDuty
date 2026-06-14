@@ -23,7 +23,7 @@
                 return;
             if (!this.started)
             {
-                Chat.ExecuteCommand("/ays discard");
+                Chat.Instance.ExecuteCommand("/ays discard");
                 this.started = true;
                 return;
             }

@@ -97,7 +97,7 @@ namespace AutoDuty.Helpers
 
             TrustMember?[] trustMembers = new TrustMember?[3];
 
-            JobRole playerJobRole = Player.Available ? Player.ClassJob.ValueNullable?.GetJobRole() ?? JobRole.None : JobRole.None;
+            JobRole playerJobRole = Player.Available ? Svc.Data.GetExcelSheet<ClassJob>().GetRowOrDefault((uint)Player.Job)?.GetJobRole() ?? JobRole.None : JobRole.None;
 
             Svc.Log.Info("Leveling Trust Members set start");
             Svc.Log.Info("Trustmembers available: " + content.TrustMembers.Count);
@@ -168,7 +168,7 @@ namespace AutoDuty.Helpers
                                      {
                                          Index       = index,
                                          MemberIds   = memberId,
-                                         Name        = dawnSheet.GetRow((uint)name)!.Name.ToString(),
+                                         Name        = dawnSheet.GetRow((uint)name)!.Unknown0.ToString(),
                                          Role        = role,
                                          Job         = jobSheet.GetRow((uint)classJob)!,
                                          MemberName  = name,

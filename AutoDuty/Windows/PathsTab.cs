@@ -1,5 +1,5 @@
 ﻿using Dalamud.Interface.Utility.Raii;
-using Dalamud.Bindings.ImGui;
+using ImGuiNET;
 using System.Numerics;
 using AutoDuty.Helpers;
 using System.Diagnostics;
@@ -53,7 +53,7 @@ namespace AutoDuty.Windows
                 Process.Start("explorer.exe", Plugin.pathsDirectory.FullName);
 
             ImGui.SameLine();
-            using (ImRaii.DisabledDisposable d = ImRaii.Disabled(_selectedDutyPath == null))
+            using (var d = ImRaii.Disabled(_selectedDutyPath == null))
             {
                 if (ImGuiEx.ButtonWrapped(Loc.Get("PathsTab.OpenFile")))
                     Process.Start("explorer", _selectedDutyPath?.FilePath ?? string.Empty);

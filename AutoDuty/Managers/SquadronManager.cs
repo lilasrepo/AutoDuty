@@ -53,19 +53,22 @@ namespace AutoDuty.Managers
             _taskManager.Enqueue(() => AddonHelper.FireCallBack(captureAddon, true, 11, content.GCArmyIndex), "RegisterSquadron");
 
 
-            _taskManager.Enqueue(() => Svc.Log.Warning(content.GCArmyIndex.ToString()));
-
-            // Open member list
-            _taskManager.Enqueue(() => AddonHelper.FireCallBack(captureAddon, true, 12, content.GCArmyIndex), "RegisterSquadron-MemberList");
-
-            AtkUnitBase* memberListAddon = null;
-            _taskManager.Enqueue(() => GenericHelpers.TryGetAddonByName("GcArmyMemberList", out memberListAddon), "RegisterSquadron-GetMemberList");
-
-            ReaderGCArmyMemberList armyMemberList = null!;
-            _taskManager.Enqueue(() => armyMemberList = new ReaderGCArmyMemberList(memberListAddon), "RegisterSquadron-GetReader");
-
+            // porting-note(api12): the auto-member-select path (open GcArmyMemberList via callback 12,
+            // read it with the gap-filled ReaderGCArmyMemberList, pick the lowest fitting members) is gated
+            // ENTIRELY behind the toggle — stricter than upstream, which opened the member list every time.
+            // With the toggle OFF this falls through to TC_ok's proven flow (select mission -> queue), so the
+            // default never depends on the GcArmyMemberList AtkValue layout being identical on game 7.1.
             if (Configuration.SquadronAssignLowestMembers)
             {
+                // Open member list
+                _taskManager.Enqueue(() => AddonHelper.FireCallBack(captureAddon, true, 12, content.GCArmyIndex), "RegisterSquadron-MemberList");
+
+                AtkUnitBase* memberListAddon = null;
+                _taskManager.Enqueue(() => GenericHelpers.TryGetAddonByName("GcArmyMemberList", out memberListAddon), "RegisterSquadron-GetMemberList");
+
+                ReaderGCArmyMemberList armyMemberList = null!;
+                _taskManager.Enqueue(() => armyMemberList = new ReaderGCArmyMemberList(memberListAddon), "RegisterSquadron-GetReader");
+
                 // disable active members
                 _taskManager.Enqueue(() =>
                                      {

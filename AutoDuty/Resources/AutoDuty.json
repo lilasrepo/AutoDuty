@@ -5,10 +5,6 @@
       {
         "Track": "Retarget",
         "Option": "Always"
-      },
-      {
-        "Track": "Everything",
-        "Option": "Enabled"
       }
     ],
     "BossMod.Autorotation.xan.BLU": [
@@ -155,10 +151,6 @@
       {
         "Track": "AOE",
         "Option": "AOE"
-      },
-      {
-        "Track": "WrithingSnap",
-        "Option": "Ranged"
       }
     ],
     "BossMod.Autorotation.xan.BRD": [

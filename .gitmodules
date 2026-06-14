@@ -1,9 +1,0 @@
-[submodule "ECommons"]
-	path = ECommons
-	url = https://github.com/ffxivcode/ECommons
-[submodule "ECommons.IPC"]
-	path = ECommons.IPC
-	url = https://github.com/NightmareXIV/ECommons.IPC
-[submodule "NightmareUI"]
-	path = NightmareUI
-	url = https://github.com/NightmareXIV/NightmareUI

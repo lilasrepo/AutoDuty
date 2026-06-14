@@ -19,7 +19,7 @@ namespace AutoDuty.IPC
     using Dalamud.Plugin;
     using ECommons.IPC.Subscribers.RotationSolverReborn;
     using ECommons.IPC.Subscribers.Skippy;
-    using WrathCombo.API;
+    using WrathCombo.API;          // ProjectReference to TC_forward/WrathCombo/WrathCombo.API (version-matched to deployed WrathCombo)
     using WrathCombo.API.Enum;
 
     internal static class AutoRetainer_IPCSubscriber
@@ -213,6 +213,9 @@ namespace AutoDuty.IPC
         internal static bool? GetFeatureEnabled(string feature) => PandorasBox.GetFeatureEnabled(feature);
     }
 
+    // porting-note(api12): restored against a ProjectReference to TC_forward/WrathCombo/WrathCombo.API
+    // (the WrathCombo.API NuGet is net10-only, but the ported WrathCombo ships a net9 build of the same
+    // assembly, version-matched to the deployed plugin so the IPC gate names line up exactly).
     public static class Wrath_IPCSubscriber
     {
         private static Guid? _curLease;
@@ -291,7 +294,9 @@ namespace AutoDuty.IPC
                     WrathIPCWrapper.SetAutoRotationConfigState(_curLease.Value, AutoRotationConfigOption.HealerAlwaysHardTarget,       true);
                     WrathIPCWrapper.SetAutoRotationConfigState(_curLease.Value, AutoRotationConfigOption.UnTargetAndDisableForPenalty, true);
                     WrathIPCWrapper.SetAutoRotationConfigState(_curLease.Value, AutoRotationConfigOption.IgnoreRangeInBoss,            true);
-                    WrathIPCWrapper.SetVariantReadyForJob(_curLease.Value, (uint) (Plugin.currentPlayerItemLevelAndClassJob.Value ?? Plugin.jobLastKnown), true);
+                    // porting-note(api12): SetVariantReadyForJob dropped — that IPC gate does not exist in the
+                    // deployed WrathCombo (0e6e5a9e); it was added in a newer WrathCombo.API. Only affects Variant
+                    // Dungeon readiness; normal duty lock + auto-rotation are unaffected.
                 }
             }
         }
@@ -373,8 +378,9 @@ namespace AutoDuty.IPC
     {
         internal static bool IsEnabled => IPCSubscriber_Common.IsReady("Skippy") && Skippy.IsEnabled();
         public static Dictionary<string, bool> GetConfig() => Skippy.GetConfig();
-        public static bool MSQSkipEnabled() => 
-            IsEnabled && Skippy.GetSkippedCategories().Contains(SkippyIPC.SkippedCategory.SkipMSQRoulette);
+        public static bool MSQSkipEnabled() =>
+            // porting-note: walk-back C#/runtime version requires LINQ Contains (no IEquatable constraint shortcut).
+            IsEnabled && System.Linq.Enumerable.Contains(Skippy.GetSkippedCategories(), SkippyIPC.SkippedCategory.SkipMSQRoulette);
     }
 
 
@@ -382,7 +388,7 @@ namespace AutoDuty.IPC
     {
         internal static bool IsReady(string pluginName) => DalamudReflector.TryGetDalamudPlugin(pluginName, out _, false, true);
 
-        internal static Version Version(string pluginName) => DalamudReflector.TryGetDalamudPlugin(pluginName, out object dalamudPlugin, false, true) ? dalamudPlugin.GetType().Assembly.GetName().Version : new Version(0, 0, 0, 0);
+        internal static Version Version(string pluginName) => DalamudReflector.TryGetDalamudPlugin(pluginName, out Dalamud.Plugin.IDalamudPlugin dalamudPlugin, false, true) ? dalamudPlugin.GetType().Assembly.GetName().Version : new Version(0, 0, 0, 0);
 
         internal static void DisposeAll(EzIPCDisposalToken[] _disposalTokens)
         {

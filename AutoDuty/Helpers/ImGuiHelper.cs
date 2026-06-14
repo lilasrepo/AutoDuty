@@ -1,4 +1,4 @@
-﻿using Dalamud.Bindings.ImGui;
+﻿using ImGuiNET;
 using Dalamud.Utility;
 using System.Globalization;
 using System.Text.RegularExpressions;
@@ -128,7 +128,7 @@ namespace AutoDuty.Helpers
 
         internal static void DrawIcon(FontAwesomeIcon icon)
         {
-            using ImRaii.FontDisposable font = ImRaii.PushFont(UiBuilder.IconFont);
+            using var font = ImRaii.PushFont(UiBuilder.IconFont);
             ImGui.SetItemAllowOverlap();
             ImGui.Text(icon.ToIconString());
             ImGui.SameLine();
@@ -155,7 +155,7 @@ namespace AutoDuty.Helpers
             }
             else
             {
-                ImRaii.DisabledDisposable disabled = ImRaii.Disabled();
+                var disabled = ImRaii.Disabled();
 
                 ImGui.AlignTextToFramePadding();
                 return new EndUnconditionally(() =>

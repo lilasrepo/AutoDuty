@@ -5,7 +5,7 @@ using Dalamud.Interface.Utility.Raii;
 using ECommons;
 using ECommons.ImGuiMethods;
 using ECommons.Throttlers;
-using Dalamud.Bindings.ImGui;
+using ImGuiNET;
 using Serilog.Events;
 using System.Numerics;
 using static AutoDuty.Updater.GitHubHelper;
@@ -168,7 +168,7 @@ namespace AutoDuty.Windows
             else if (_taskUserCode is { IsCompletedSuccessfully: false })
             {
                 Vector4 vector4 = new(0, 1, 0, 1);
-                ImGui.TextColored(in vector4, Loc.Get("LogTab.Auth.WaitingResponse"));
+                ImGui.TextColored(vector4, Loc.Get("LogTab.Auth.WaitingResponse"));
                 return;
             }
             else if (_taskUserCode is { IsCompletedSuccessfully: true })

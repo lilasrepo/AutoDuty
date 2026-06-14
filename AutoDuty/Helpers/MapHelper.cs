@@ -16,9 +16,11 @@ namespace AutoDuty.Helpers
 
     internal static class MapHelper
     {
-        internal static unsafe bool IsFlagMarkerSet => AgentMap.Instance()->FlagMarkerCount > 0;
-        
-        internal static unsafe FlagMapMarker GetFlagMarker => IsFlagMarkerSet ? AgentMap.Instance()->FlagMapMarkers[0] : default;
+        // porting-note: AgentMap.FlagMarkerCount / FlagMapMarkers are game-7.5-only fields.
+        // Stub to "no flag set" so flag-driven AutoDuty paths don't fire. Main duty automation unaffected.
+        internal static unsafe bool IsFlagMarkerSet => false;
+
+        internal static unsafe FlagMapMarker GetFlagMarker => default;
 
         internal static Vector2 ConvertWorldXZToMap(Vector2 coords, Map map) => Dalamud.Utility.MapUtil.WorldToMap(coords, map.OffsetX, map.OffsetY, map.SizeFactor);
 

@@ -275,8 +275,10 @@ namespace AutoDuty.Helpers
 
         public delegate bool QueueNoviceTutorialDelegate(uint tutorialRowId);
 
-        [Signature("E8 ?? ?? ?? ?? 48 8B 07 48 8B CF C7 47 ?? ?? ?? ?? ?? FF 50 28 40 B6 01")]
-        public QueueNoviceTutorialDelegate QueueNoviceTutorial;
+        // porting-note: HEAD sig "E8 ?? ?? ?? ?? 48 8B 07 ..." targets game 7.5; the wrapper E8-call scan
+        // can't reliably resolve to a game-7.1 equivalent without dev-time analysis. Stub field to a noop.
+        // Novice-tutorial duty queueing degrades to no-op; main queue path unaffected.
+        public QueueNoviceTutorialDelegate QueueNoviceTutorial = _ => { Svc.Log?.Warning("QueueNoviceTutorial unavailable in API12 build."); return false; };
 
         private void QueueNovice()
         {

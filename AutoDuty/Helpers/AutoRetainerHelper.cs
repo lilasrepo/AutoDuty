@@ -48,12 +48,12 @@ namespace AutoDuty.Helpers
 
             if (AutoRetainer_IPCSubscriber.IsBusy())
                 AutoRetainer_IPCSubscriber.AbortAllTasks();
-            Chat.ExecuteCommand("/autoretainer d");
+            Chat.Instance.ExecuteCommand("/autoretainer d");
         }
 
         private        bool         _autoRetainerStarted = false;
         private        bool         _autoRetainerStopped = false;
-        private static IGameObject? SummoningBellGameObject => Svc.Objects.FirstOrDefault(x => x.BaseId == SummoningBellHelper.SummoningBellDataIds((uint)Configuration.PreferredSummoningBellEnum));
+        private static IGameObject? SummoningBellGameObject => Svc.Objects.FirstOrDefault(x => x.DataId == SummoningBellHelper.SummoningBellDataIds((uint)Configuration.PreferredSummoningBellEnum));
 
         protected override unsafe void HelperStopUpdate(IFramework framework)
         {
@@ -120,7 +120,7 @@ namespace AutoDuty.Helpers
                     if (AutoRetainer_IPCSubscriber.AreAnyRetainersAvailableForCurrentChara())
                     {
                         this.DebugLog("Waiting for AutoRetainer to Start");
-                        Chat.ExecuteCommand("/autoretainer e");
+                        Chat.Instance.ExecuteCommand("/autoretainer e");
                     }
                 }
             }
@@ -131,12 +131,12 @@ namespace AutoDuty.Helpers
                 EzThrottler.Throttle(this.Name, 2000, true);
             }
 
-            if (SummoningBellGameObject != null && !SummoningBellHelper.HousingZones.Contains(Player.Territory.RowId) && ObjectHelper.GetDistanceToPlayer(SummoningBellGameObject) > 4)
+            if (SummoningBellGameObject != null && !SummoningBellHelper.HousingZones.Contains(Player.Territory) && ObjectHelper.GetDistanceToPlayer(SummoningBellGameObject) > 4)
             {
                 this.DebugLog("Moving Closer to Summoning Bell");
                 MovementHelper.Move(SummoningBellGameObject, 0.25f, 4);
             }
-            else if ((SummoningBellGameObject == null || SummoningBellHelper.HousingZones.Contains(Player.Territory.RowId)) && GotoHelper.State != ActionState.Running)
+            else if ((SummoningBellGameObject == null || SummoningBellHelper.HousingZones.Contains(Player.Territory)) && GotoHelper.State != ActionState.Running)
             {
                 this.DebugLog("Moving to Summoning Bell Location");
                 SummoningBellHelper.Invoke(Configuration.PreferredSummoningBellEnum);

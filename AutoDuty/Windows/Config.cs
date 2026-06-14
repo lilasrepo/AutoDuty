@@ -1,6 +1,6 @@
 using AutoDuty.Helpers;
 using AutoDuty.IPC;
-using Dalamud.Bindings.ImGui;
+using ImGuiNET;
 using Dalamud.Interface;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
@@ -43,7 +43,7 @@ using Achievement = Lumina.Excel.Sheets.Achievement;
 using Vector2 = FFXIVClientStructs.FFXIV.Common.Math.Vector2;
 
 [JsonObject(MemberSerialization.OptIn)]
-public class ConfigurationMain
+public class ConfigurationMain : ECommons.Configuration.IEzConfig
 {
     public const string CONFIGNAME_BARE = "Bare";
 
@@ -315,7 +315,7 @@ public class ConfigurationMain
                                                           {
                                                               CID   = cid,
                                                               Name  = Player.Name,
-                                                              World = Player.CurrentWorldName
+                                                              World = Player.CurrentWorld
                                                           };
                                     EzConfig.Save();
 
@@ -442,7 +442,7 @@ public class Configuration
     public bool Unsynced                       = false;
     public bool HideUnavailableDuties          = false;
     public bool PreferTrustOverSupportLeveling = false;
-    public bool SquadronAssignLowestMembers    = true;
+    public bool SquadronAssignLowestMembers    = false; // porting-note(api12): default OFF — member-select reads the GcArmyMemberList AtkValue layout, runtime-unverified on game 7.1 (upstream default was true)
 
     public bool ShowMainWindowOnStartup = false;
 
@@ -535,7 +535,7 @@ public class Configuration
     public RotationPlugin rotationPlugin                = RotationPlugin.All;
 
     #region Wrath
-    public bool                                Wrath_AutoSetupJobs { get; set; } = true;
+    public bool Wrath_AutoSetupJobs { get; set; } = true;
     public WrathCombo.API.Enum.DPSRotationMode Wrath_TargetingTank    = WrathCombo.API.Enum.DPSRotationMode.Highest_Max;
     public WrathCombo.API.Enum.DPSRotationMode Wrath_TargetingNonTank = WrathCombo.API.Enum.DPSRotationMode.Lowest_Current;
     #endregion
@@ -883,7 +883,7 @@ public static class ConfigTab
             ImGuiHelper.DrawIcon(FontAwesomeIcon.CheckCircle);
         ImGui.PushItemWidth(ImGui.GetContentRegionAvail().X - 180 * ImGuiHelpers.GlobalScale);
         ImGui.SetItemAllowOverlap();
-        using (ImRaii.ComboDisposable configCombo = ImRaii.Combo("##ConfigCombo", ConfigurationMain.Instance.ActiveProfileName))
+        using (var configCombo = ImRaii.Combo("##ConfigCombo", ConfigurationMain.Instance.ActiveProfileName))
         {
             if (configCombo)
                 foreach (string key in ConfigurationMain.Instance.ConfigNames)
@@ -1004,7 +1004,7 @@ public static class ConfigTab
 
         if (bareProfile)
             ImGuiEx.TextWrapped(Loc.Get("ConfigTab.Profile.BareProfileNote"));
-        using ImRaii.DisabledDisposable _ = ImRaii.Disabled(bareProfile);
+        using var _ = ImRaii.Disabled(bareProfile);
 
         //Start of Window & Overlay Settings
         ImGui.Spacing();
@@ -1549,10 +1549,13 @@ public static class ConfigTab
 
             if (ImGui.Checkbox(Loc.Get("ConfigTab.Duty.DisableRenderWhileActive"), ref Configuration.DisableRenderWhileActive))
             {
-                if (!Configuration.DisableRenderWhileActive)
-                    RenderDisableManager.RemoveRequest();
-                else if (Plugin.States != PluginState.None)
-                    RenderDisableManager.PlaceRequest();
+                // TODO(api12): RenderDisableManager (ECommons.GameFunctions, upstream 9a859875 "Disabling 3D render")
+                //   is not present in walk-back ECommons; AutoDuty.cs stubs the same calls. The setting still
+                //   persists, but the render-disable request is inert (matches the existing AutoDuty.cs stub).
+                //if (!Configuration.DisableRenderWhileActive)
+                //    RenderDisableManager.RemoveRequest();
+                //else if (Plugin.States != PluginState.None)
+                //    RenderDisableManager.PlaceRequest();
 
                 Configuration.Save();
             }
@@ -2234,7 +2237,7 @@ public static class ConfigTab
                     ImGui.SameLine();
                     float curX = ImGui.GetCursorPosX();
                     if (Configuration.UseSliderInputs  && ImGui.SliderInt("###TripleTriadSellingMinSlotSlider", ref Configuration.TripleTriadSellMinSlotCount, 1, 5) ||
-                        !Configuration.UseSliderInputs && ImGui.InputInt("###TripleTriadSellingMinSlotInput", ref Configuration.TripleTriadSellMinSlotCount, step: 1, stepFast: 2))
+                        !Configuration.UseSliderInputs && ImGui.InputInt("###TripleTriadSellingMinSlotInput", ref Configuration.TripleTriadSellMinSlotCount, 1, 2))
                     {
                         Configuration.TripleTriadSellMinSlotCount = Math.Max(Configuration.TripleTriadSellMinSlotCount, 1);
                         Configuration.Save();
@@ -2244,7 +2247,7 @@ public static class ConfigTab
                     ImGui.SameLine();
                     ImGui.SetCursorPosX(curX);
                     if (Configuration.UseSliderInputs  && ImGui.SliderInt("###TripleTriadSellingMinItemSlider", ref Configuration.TripleTriadSellMinItemCount, 1, 99) ||
-                        !Configuration.UseSliderInputs && ImGui.InputInt("###TripleTriadSellingMinItemInput", ref Configuration.TripleTriadSellMinItemCount, step: 1, stepFast: 10))
+                        !Configuration.UseSliderInputs && ImGui.InputInt("###TripleTriadSellingMinItemInput", ref Configuration.TripleTriadSellMinItemCount, 1, 10))
                     {
                         Configuration.TripleTriadSellMinItemCount = Math.Max(Configuration.TripleTriadSellMinItemCount, 1);
                         Configuration.Save();
@@ -2285,10 +2288,14 @@ public static class ConfigTab
                     ImGui.AlignTextToFramePadding();
                     ImGui.Text(Loc.Get("ConfigTab.BetweenLoop.WaitingUpTo"));
                     ImGui.SameLine();
-                    if (Configuration.UseSliderInputs && ImGui.SliderLong("###AutoRetainerTimeWaitingSlider", ref Configuration.AutoRetainer_RemainingTime, 0L, 300L) ||
-                        !Configuration.UseSliderInputs && ImGui.InputLong("###AutoRetainerTimeWaitingInput", ref Configuration.AutoRetainer_RemainingTime, step: 1L, stepFast: 10L))
+                    // porting-note: API12 ImGui.NET lacks SliderLong/InputLong; bridge via int.
+                    int arSliderTmp = (int)Math.Min(int.MaxValue, Configuration.AutoRetainer_RemainingTime);
+                    bool arChanged = Configuration.UseSliderInputs
+                        ? ImGui.SliderInt("###AutoRetainerTimeWaitingSlider", ref arSliderTmp, 0, 300)
+                        : ImGui.InputInt("###AutoRetainerTimeWaitingInput", ref arSliderTmp, 1, 10);
+                    if (arChanged)
                     {
-                        Configuration.AutoRetainer_RemainingTime = Math.Max(Configuration.AutoRetainer_RemainingTime, 0L);
+                        Configuration.AutoRetainer_RemainingTime = Math.Max(arSliderTmp, 0);
                         Configuration.Save();
                     }
                     ImGui.SameLine();
@@ -2556,7 +2563,7 @@ public static class ConfigTab
                     case TransportType.NamedPipe:
                     {
                         string pipeName = MultiboxUtility.Config.PipeName;
-                        if(ImGui.InputText(Loc.Get("ConfigTab.Multiboxing.PipeName"), ref pipeName))
+                        if(ImGui.InputText(Loc.Get("ConfigTab.Multiboxing.PipeName"), ref pipeName, 256))
                         {
                             MultiboxUtility.Config.PipeName = pipeName;
                             Configuration.Save();
@@ -2572,7 +2579,7 @@ public static class ConfigTab
                         if (!MultiboxUtility.Config.Host)
                         {
                             string serverName = MultiboxUtility.Config.ServerName;
-                            if (ImGui.InputText(Loc.Get("ConfigTab.Multiboxing.ServerName"), ref serverName))
+                            if (ImGui.InputText(Loc.Get("ConfigTab.Multiboxing.ServerName"), ref serverName, 256))
                             {
                                 MultiboxUtility.Config.ServerName = serverName;
                                 Configuration.Save();
@@ -2593,7 +2600,7 @@ public static class ConfigTab
                         if (!MultiboxUtility.Config.Host)
                         {
                             string serverAddress = MultiboxUtility.Config.ServerAddress;
-                            if (ImGui.InputText(Loc.Get("ConfigTab.Multiboxing.ServerAddress"), ref serverAddress))
+                            if (ImGui.InputText(Loc.Get("ConfigTab.Multiboxing.ServerAddress"), ref serverAddress, 256))
                             {
                                 MultiboxUtility.Config.ServerAddress = serverAddress;
                                 Configuration.Save();

@@ -7,7 +7,7 @@ using ECommons.DalamudServices;
 using ECommons.ExcelServices;
 using ECommons.GameFunctions;
 using ECommons.ImGuiMethods;
-using Dalamud.Bindings.ImGui;
+using ImGuiNET;
 
 namespace AutoDuty.Windows
 {
@@ -66,7 +66,7 @@ namespace AutoDuty.Windows
                 if (Plugin.CurrentTerritoryContent == null || !PlayerHelper.IsReady)
                     return;
 
-                using ImRaii.DisabledDisposable? d = ImRaii.Disabled(InDungeon && Plugin is { Stage: > 0 });
+                using var d = ImRaii.Disabled(InDungeon && Plugin is { Stage: > 0 });
 
                 if (ContentPathsManager.DictionaryPaths.TryGetValue(Plugin.CurrentTerritoryContent.TerritoryType, out ContentPathsManager.ContentPathContainer? container))
                 {
@@ -138,7 +138,12 @@ namespace AutoDuty.Windows
                      AutoDuty.Configuration.StopNoRestedXP ||
                      AutoDuty.Configuration.StopItemQty    ||
                      AutoDuty.Configuration.TerminationBLUSpellsEnabled))
-                    ImGui.TextColoredWrapped(EzColor.Cyan, Loc.Get("MainTab.TerminationNotice"));
+                    {
+                        // porting-note: API12 ImGui.NET lacks TextColoredWrapped; bridge via PushStyleColor + TextWrapped.
+                        ImGui.PushStyleColor(ImGuiCol.Text, (Vector4)EzColor.Cyan);
+                        ImGui.TextWrapped(Loc.Get("MainTab.TerminationNotice"));
+                        ImGui.PopStyleColor();
+                    }
             }
 
             if (InDungeon)
@@ -206,14 +211,15 @@ namespace AutoDuty.Windows
 
                         if(dutyMode == DutyMode.Variant)
                         {
-                            using ImRaii.ItemWidthDisposable _ = ImRaii.ItemWidth(150 * ImGuiHelpers.GlobalScale);
+                            using var _ = ImRaii.ItemWidth(150 * ImGuiHelpers.GlobalScale);
                             ImGui.AlignTextToFramePadding();
                             ImGui.Text(Loc.Get("MainTab.CurrentVariantPath"));
-                            using ImRaii.DisabledDisposable __ = ImRaii.Disabled(AutoDuty.Configuration.AutoDutyModeEnum == AutoDutyMode.Playlist);
+                            using var __ = ImRaii.Disabled(AutoDuty.Configuration.AutoDutyModeEnum == AutoDutyMode.Playlist);
                             ImGui.SameLine();
-                            byte variantPath = Plugin.VariantPath;
-                            ImGui.InputByte($"###Path", ref variantPath, 1);
-                            Plugin.VariantPath = variantPath;
+                            // porting-note: API12 ImGui.NET lacks InputByte; bridge via int.
+                            int variantPathTmp = Plugin.VariantPath;
+                            if (ImGui.InputInt($"###Path", ref variantPathTmp, 1))
+                                Plugin.VariantPath = (byte)Math.Clamp(variantPathTmp, 0, 255);
                         }
 
                         DrawTerminationNotice();
@@ -415,6 +421,9 @@ namespace AutoDuty.Windows
                                     ImGuiEx.HelpMarker($"Adds more dungeons into the leveling list\nThese dungeons are currently in testing for reliability\nPlease report if you have issues with them");
                                 }
 
+                                // porting-note(api12): restored via gap-filled ReaderGCArmyMemberList. Defaults OFF —
+                                // the member-select path reads the GcArmyMemberList AtkValue layout, which is runtime-
+                                // unverified on game 7.1; enabling it falls back cleanly to the proven flow if unticked.
                                 if (AutoDuty.Configuration.DutyModeEnum == DutyMode.Squadron)
                                     if (ImGui.Checkbox(Loc.Get("MainTab.UseLowestMembers"), ref AutoDuty.Configuration.SquadronAssignLowestMembers))
                                             Configuration.Save();
@@ -626,7 +635,8 @@ namespace AutoDuty.Windows
 
 
                                             ImGui.PushItemWidth(80f.Scale());
-                                            if (ImGui.InputInt($"##Playlist{i}Count", ref entry.count, step: 1, stepFast: 2, @"%dx")) 
+                                            // porting-note: API12 ImGui.NET InputInt lacks format-string overload; drop @"%dx".
+                                            if (ImGui.InputInt($"##Playlist{i}Count", ref entry.count, 1, 2))
                                                 entry.count = Math.Max(1, entry.count);
 
                                             ImGui.PopItemWidth();
@@ -740,7 +750,10 @@ namespace AutoDuty.Windows
                                             {
                                                 ImGui.PushItemWidth(80f.Scale());
                                                 ImGui.SameLine();
-                                                ImGui.InputByte($"###Playlist{i}PathIndex", ref entry.variantPathIndex, 1);
+                                                // porting-note: API12 ImGui.NET lacks InputByte; bridge via int.
+                                                int playlistPathTmp = entry.variantPathIndex;
+                                                if (ImGui.InputInt($"###Playlist{i}PathIndex", ref playlistPathTmp, 1))
+                                                    entry.variantPathIndex = (byte)Math.Clamp(playlistPathTmp, 0, 255);
                                                 ImGui.PopItemWidth();
                                             }
 

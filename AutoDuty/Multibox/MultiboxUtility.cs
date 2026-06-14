@@ -205,7 +205,7 @@ public static class MultiboxUtility
 
                 if (!InDungeon)
                 {
-                    Chat.ExecuteCommand("/partycmd breakup");
+                    Chat.Instance.ExecuteCommand("/partycmd breakup");
 
                     SchedulerHelper.ScheduleAction("MultiboxServer PartyBreakup Accept", () =>
                                                                                          {
@@ -332,7 +332,7 @@ public static class MultiboxUtility
 
                                                                 if (!PartyHelper.IsPartyMember(client.CID))
                                                                 {
-                                                                    if (client.WorldId == Player.CurrentWorld.RowId)
+                                                                    if (client.WorldId == Player.CurrentWorldId)
                                                                         InfoProxyPartyInvite.Instance()->InviteToParty(client.CID, client.CName, client.WorldId);
                                                                     else
                                                                         InfoProxyPartyInvite.Instance()->InviteToPartyContentId(client.CID, 0);
@@ -545,7 +545,7 @@ public static class MultiboxUtility
                     _ = Svc.Framework.RunOnTick(() =>
                                                 {
                                                     if (Player.CID != 0)
-                                                        clientSS.WriteString($"{CLIENT_CID_KEY}|{Player.CID}|{Player.Name}|{Player.CurrentWorld.RowId}");
+                                                        clientSS.WriteString($"{CLIENT_CID_KEY}|{Player.CID}|{Player.Name}|{Player.CurrentWorldId}");
                                                 }, cancellationToken: ct);
 
                     _ = Task.Run(() => ClientKeepAliveThread(ct), ct);

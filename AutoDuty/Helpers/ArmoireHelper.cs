@@ -1,4 +1,4 @@
-﻿namespace AutoDuty.Helpers;
+namespace AutoDuty.Helpers;
 
 using Dalamud.Plugin.Services;
 using ECommons;
@@ -47,7 +47,7 @@ internal class ArmoireHelper : ActiveHelperBase<ArmoireHelper>
 
         Plugin.action = "Armoire";
 
-        if(Svc.Targets.Target == null || !this.armoireIDs.Contains(Svc.Targets.Target.BaseId))
+        if(Svc.Targets.Target == null || !this.armoireIDs.Contains(Svc.Targets.Target.DataId))
         {
             this.DebugLog("Target is not the armoire.");
             IGameObject? armoire = ObjectHelper.GetObjectByDataIds(this.armoireIDs);
@@ -97,19 +97,14 @@ internal class ArmoireHelper : ActiveHelperBase<ArmoireHelper>
 
             int baseIndex = 8 + this.skippedEntries * 7;
 
-            RaptureAtkModule.ItemCache itemCache = agentCabinet->ItemCaches[this.skippedEntries];
-            uint                       cabinetId = this.ItemToCabinetIds[itemCache.Id];
-
-            this.DebugLog(UIState.Instance()->Cabinet.IsItemInCabinet(cabinetId).ToString());
-
-            if (data->IntArray[baseIndex + 1] < 30_000 || UIState.Instance()->Cabinet.IsItemInCabinet(cabinetId))
+            if (data->IntArray[baseIndex + 1] < 30_000)
             {
                 this.skippedEntries++;
-                this.DebugLog($"Skipping item. Skipped entries: {this.skippedEntries}");
+                this.DebugLog($"Skipping item because it's below our threshold. Skipped entries: {this.skippedEntries}");
                 return;
             }
 
-            AddonHelper.FireCallBack(addonCabinet, true, 0, data->IntArray[baseIndex + 4]);
+            AddonHelper.FireCallBack(addonCabinet, true, 0, data->IntArray[baseIndex+4]);
             return;
         }
 

@@ -86,6 +86,7 @@ namespace AutoDuty.Helpers
                             continue;
                     
                         LayerCommon.ENPCInstanceObject eNPCInstanceObject = (LayerCommon.ENPCInstanceObject)instanceObject.Object;
+                        // porting-note: walk-back FFXIVClientStructs uses .BaseId at the inner ParentData ref.
                         uint eNpcResidentDataId = eNPCInstanceObject.ParentData.ParentData.BaseId;
                         
                         if (eNpcResidentDataId == 0) 

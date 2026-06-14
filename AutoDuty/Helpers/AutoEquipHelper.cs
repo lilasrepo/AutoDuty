@@ -96,7 +96,7 @@ namespace AutoDuty.Helpers
             if (!this._statesExecuted.HasFlag(AutoEquipState.Setting_Up))
             {
                 this.DebugLog($"RecommendEquipModule - SetupForClassJob");
-                RecommendEquipModule.Instance()->SetupForClassJob((byte)Player.ClassJob.RowId);
+                RecommendEquipModule.Instance()->SetupForClassJob((byte)(uint)Player.Job);
                 this._statesExecuted |= AutoEquipState.Setting_Up;
             }
             else if (!this._statesExecuted.HasFlag(AutoEquipState.Equipping))
@@ -171,7 +171,7 @@ namespace AutoDuty.Helpers
                             }
                             else
                             {
-                                InventoryManager.Instance()->MoveItemSlot(InventoryType.EquippedItems, (ushort)equipSlotIndex, inv, slot, true);
+                                InventoryManager.Instance()->MoveItemSlot(InventoryType.EquippedItems, (ushort)equipSlotIndex, inv, slot, 1);
                                 this.DebugLog("Moving old item to inventory");
                                 return;
                             }

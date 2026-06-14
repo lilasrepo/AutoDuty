@@ -1,5 +1,5 @@
 ﻿using AutoDuty.Helpers;
-using Dalamud.Bindings.ImGui;
+using ImGuiNET;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Interface;
 using Dalamud.Interface.Components;
@@ -153,9 +153,14 @@ public class PathActionConditionActionStatus : PathActionCondition
     {
         ImGuiEx.EnumCombo("Action Type", ref this.type);
         ImGui.SameLine();
-        ImGui.InputUInt("Action ID", ref this.id);
+        // porting-note: API12 ImGui.NET lacks InputUInt; bridge via int.
+        int idTmp = (int)this.id;
+        if (ImGui.InputInt("Action ID", ref idTmp))
+            this.id = (uint)idTmp;
         ImGui.SameLine();
-        ImGui.InputUInt("Status Code", ref this.statusCode);
+        int scTmp = (int)this.statusCode;
+        if (ImGui.InputInt("Status Code", ref scTmp))
+            this.statusCode = (uint)scTmp;
     }
 
     public override IEnumerable<(Vector4 color, string text)> DrawStepEntry()
@@ -372,15 +377,16 @@ public class PathActionConditionVariantPath : PathActionCondition
     {
         for (int i = 0; i < this.pathIndices.Count; i++)
         {
-            byte x = this.pathIndices[i];
-            ImGui.InputByte($"###Path{i}", ref x, 1);
-            this.pathIndices[i] = x;
+            // porting-note: API12 ImGui.NET lacks InputByte; bridge via int.
+            int xTmp = this.pathIndices[i];
+            if (ImGui.InputInt($"###Path{i}", ref xTmp, 1))
+                this.pathIndices[i] = (byte)Math.Clamp(xTmp, 0, 255);
         }
         if (ImGuiComponents.IconButton(FontAwesomeIcon.Plus))
             this.pathIndices.Add((byte)(this.pathIndices.Count == 0 ? 1 : this.pathIndices.Last() + 1));
         ImGui.SameLine();
 
-        using ImRaii.DisabledDisposable _ = ImRaii.Disabled(this.pathIndices.Count == 0);
+        using var _ = ImRaii.Disabled(this.pathIndices.Count == 0);
         if (ImGuiComponents.IconButton(FontAwesomeIcon.Minus))
             this.pathIndices.RemoveAt(this.pathIndices.Count - 1);
     }
@@ -402,7 +408,7 @@ public abstract class PathActionConditionLogicCollection : PathActionCondition
         {
             PathActionCondition condition = this.conditions[index];
 
-            using ImRaii.IdDisposable _ = ImRaii.PushId($"BuildTab_Condition_Logic_{index}");
+            using var _ = ImRaii.PushId($"BuildTab_Condition_Logic_{index}");
             ImGui.Text(condition.ParseKey.ToLocalizedString());
             ImGui.SameLine();
 
@@ -419,7 +425,7 @@ public abstract class PathActionConditionLogicCollection : PathActionCondition
             this.conditions.Add(pathActionCondition);
 
         ImGui.SameLine();
-        using ImRaii.DisabledDisposable __ = ImRaii.Disabled(this.conditions.Count == 0);
+        using var __ = ImRaii.Disabled(this.conditions.Count == 0);
         if (ImGuiComponents.IconButton("ConditionLogic_Del", FontAwesomeIcon.Minus))
             this.conditions.RemoveAt(this.conditions.Count - 1);
     }
