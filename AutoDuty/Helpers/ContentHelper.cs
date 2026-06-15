@@ -17,13 +17,15 @@ namespace AutoDuty.Helpers
     {
         internal static Dictionary<uint, Content> DictionaryContent { get; set; } = [];
         
-        // porting-note(api12/TC): game-7.1 squadron territory IDs, NOT HEAD's game-7.5 IDs. SE re-IDed
-        // these ARR dungeons in a later patch (162->1245 Halatali, 171->1330 Dzemael Darkhold,
-        // 172->1331 Aurum Vale, 159 dropped); TC game 7.1 still uses the originals, so the 7.5 IDs match
-        // no TC content and the dungeons vanish from the squadron list. Order mirrors the in-game
-        // GcArmyCapture mission list (GCArmyIndex is the row passed to FireCallBack), so this is TC_ok's
-        // exact list verbatim. Re-apply each refresh — a 3-way merge will re-take HEAD's 7.5 IDs.
-        private static List<uint> ListGCArmyContent { get; set; } = [162, 1039, 1041, 1042, 171, 172, 159, 160, 349, 362, 188, 1064, 1066, 430, 510];
+        // porting-note(api12/TC): squadron territory IDs verified against the TC game-7.1 ContentFinderCondition
+        // sheet (read directly from sqpack). Dzemael Darkhold (171) and The Aurum Vale (172) were re-IDed to
+        // 1330/1331 only AFTER 7.1, so 7.1 keeps the ARR IDs; Wanderer's Palace (159) is present on 7.1 though
+        // HEAD dropped it ("out for now"). Halatali is the EXCEPTION: its map revamp to 1245 predates 7.1, so
+        // 7.1 already uses 1245 (same as HEAD) — territory 162 has NO CFC row on 7.1 and must NOT be used
+        // (c89f1084 wrongly reverted it to 162 along with the others, which silently hid Halatali from the
+        // squadron list). Path (1245) Halatali.json exists. Order mirrors the in-game GcArmyCapture mission
+        // list (GCArmyIndex is the row passed to FireCallBack). Re-apply each refresh.
+        private static List<uint> ListGCArmyContent { get; set; } = [1245, 1039, 1041, 1042, 171, 172, 159, 160, 349, 362, 188, 1064, 1066, 430, 510];
         
         private static List<uint> ListVVDContent { get; set; } = [1069, 1137, 1176, 1315]; //[1069, 1075, 1076, 1137, 1155, 1156, 1176, 1179, 1180]; *Criterions
 
