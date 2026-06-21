@@ -751,26 +751,33 @@ public class Configuration
     #endregion
 
     #region Termination
-    public bool                                        EnableTerminationActions    = true;
-    public bool                                        StopLevel                   = false;
-    public int                                         StopLevelInt                = 1;
-    public bool                                        StopNoRestedXP              = false;
-    public bool                                        StopItemQty                 = false;
-    public bool                                        StopItemAll                 = false;
-    public Dictionary<uint, KeyValuePair<string, int>> StopItemQtyItemDictionary   = [];
-    public int                                         StopItemQtyInt              = 1;
-    public bool                                        TerminationBLUSpellsEnabled = false;
-    public List<uint>                                  TerminationBLUSpells        = [];
-    public bool                                        TerminationBLUSpellsAll     = false;
-    public bool                                        ExecuteCommandsTermination  = false;
-    public List<string>                                CustomCommandsTermination   = [];
-    public bool                                        PlayEndSound                = false;
-    public bool                                        CustomSound                 = false;
-    public float                                       CustomSoundVolume           = 0.5f;
-    public Sounds                                      SoundEnum                   = Sounds.None;
-    public string                                      SoundPath                   = "";
-    public TerminationMode                             TerminationMethodEnum       = TerminationMode.Do_Nothing;
-    public bool                                        TerminationKeepActive       = true;
+    public bool                                        EnableTerminationActions      = true;
+    public bool                                        StopLevel                     = false;
+    public int                                         StopLevelInt                  = 1;
+    public bool                                        StopNoRestedXP                = false;
+    public bool                                        StopItemQty                   = false;
+    public bool                                        StopItemAll                   = false;
+    public Dictionary<uint, KeyValuePair<string, int>> StopItemQtyItemDictionary     = [];
+    public int                                         StopItemQtyInt                = 1;
+    public bool                                        StopWhenDutyGathered          = false;
+    public bool                                        StopWhenDutyGatheredSetsOnly  = false;
+    public bool                                        TerminationBLUSpellsEnabled   = false;
+    public List<uint>                                  TerminationBLUSpells          = [];
+    public bool                                        TerminationBLUSpellsAll       = false;
+    public bool                                        TerminationInventoryFree      = false;
+    public int                                         TerminationInventoryFreeSlots = 0;
+    public bool                                        TerminationiLvl               = false;
+    public int                                         TerminationiLvlInt            = 0;
+
+    public bool                                        ExecuteCommandsTermination   = false;
+    public List<string>                                CustomCommandsTermination    = [];
+    public bool                                        PlayEndSound                 = false;
+    public bool                                        CustomSound                  = false;
+    public float                                       CustomSoundVolume            = 0.5f;
+    public Sounds                                      SoundEnum                    = Sounds.None;
+    public string                                      SoundPath                    = "";
+    public TerminationMode                             TerminationMethodEnum        = TerminationMode.Do_Nothing;
+    public bool                                        TerminationKeepActive        = true;
     #endregion
 
     public static void Save() => 
@@ -1150,7 +1157,8 @@ public static class ConfigTab
 
                 unsafe
                 {
-                    //RaptureAtkModule.Instance().item
+                    ImGui.Text($"In Area: " + GotoHousingHelper.InHousingArea(Housing.FC_Estate));
+                    ImGui.Text($"Indoors: " + GotoHousingHelper.InPrivateHouse(Housing.FC_Estate));
                 }
 
                 if (ImGui.CollapsingHeader("Sheet Check"))
@@ -2326,7 +2334,7 @@ public static class ConfigTab
         {
             if (ImGui.Checkbox($"{Loc.Get("ConfigTab.Termination.Enable")}###TerminationEnable", ref Configuration.EnableTerminationActions))
                 Configuration.Save();
-
+            ImGuiComponents.HelpMarker(Loc.Get("ConfigTab.Termination.Help"));
             using (ImRaii.Disabled(!Configuration.EnableTerminationActions))
             {
                 ImGui.Separator();
@@ -2356,15 +2364,41 @@ public static class ConfigTab
                     }
                     ImGui.PopItemWidth();
                 }
-                ImGuiComponents.HelpMarker(Loc.Get("ConfigTab.Termination.StopAtLevelHelp"));
+
                 if (ImGui.Checkbox(Loc.Get("ConfigTab.Termination.StopNoRestedXP"), ref Configuration.StopNoRestedXP))
                     Configuration.Save();
 
-                ImGuiComponents.HelpMarker(Loc.Get("ConfigTab.Termination.StopNoRestedXPHelp"));
+                if (ImGui.Checkbox(Loc.Get("ConfigTab.Termination.StopAtILevel"), ref Configuration.TerminationiLvl))
+                    Configuration.Save();
+
+                if (Configuration.TerminationiLvl)
+                {
+                    ImGui.SameLine(0, 10);
+                    ImGui.PushItemWidth(ImGui.GetContentRegionAvail().X);
+                    if (Configuration.UseSliderInputs)
+                    {
+                        if (ImGui.SliderInt("##ItemLevel", ref Configuration.TerminationiLvlInt, 1, 100))
+                        {
+                            Configuration.TerminationiLvlInt = Math.Clamp(Configuration.TerminationiLvlInt, 1, 100);
+                            Configuration.Save();
+                        }
+                    }
+                    else
+                    {
+                        if (ImGui.InputInt("##ItemLevel", ref Configuration.TerminationiLvlInt, 1, 5))
+                        {
+                            Configuration.TerminationiLvlInt = Math.Clamp(Configuration.TerminationiLvlInt, 1, 100);
+                            Configuration.Save();
+                        }
+                    }
+                    ImGui.PopItemWidth();
+                }
+
+
+
                 if (ImGui.Checkbox(Loc.Get("ConfigTab.Termination.StopAtItemQty"), ref Configuration.StopItemQty))
                     Configuration.Save();
 
-                ImGuiComponents.HelpMarker(Loc.Get("ConfigTab.Termination.StopAtItemQtyHelp"));
                 if (Configuration.StopItemQty)
                 {
                     ImGui.PushItemWidth(ImGui.GetContentRegionAvail().X - 125 * ImGuiHelpers.GlobalScale);
@@ -2412,6 +2446,20 @@ public static class ConfigTab
                         Configuration.Save();
                 }
 
+                using (ImGuiHelper.RequiresPlugin(ExternalPlugin.GlamourLog, "StopWhenDutyGatheredGlamourLog", inline: true))
+                {
+                    if (ImGui.Checkbox(Loc.Get("ConfigTab.Termination.StopWhenDutyGathered"), ref Configuration.StopWhenDutyGathered))
+                        Configuration.Save();
+                    ImGuiComponents.HelpMarker(Loc.Get("ConfigTab.Termination.StopWhenDutyGatheredHelp"));
+                }
+                if (Configuration.StopWhenDutyGathered)
+                {
+                    ImGui.Indent();
+                    if (ImGui.Checkbox(Loc.Get("ConfigTab.Termination.StopWhenDutyGatheredSetsOnly"), ref Configuration.StopWhenDutyGatheredSetsOnly))
+                        Configuration.Save();
+                    ImGui.Unindent();
+                }
+
                 if (ImGui.Checkbox(Loc.Get("ConfigTab.Termination.StopBLUSpell"), ref Configuration.TerminationBLUSpellsEnabled))
                     Configuration.Save();
 
@@ -2455,6 +2503,28 @@ public static class ConfigTab
 
                     ImGui.Unindent();
                 }
+
+                if(ImGui.Checkbox(Loc.Get("ConfigTab.Termination.StopWhenInventoryFull") + "###StopWhenInventoryFull", ref Configuration.TerminationInventoryFree))
+                    Configuration.Save();
+
+                if (Configuration.TerminationInventoryFree)
+                {
+                    ImGui.Indent();
+                    ImGui.PushItemWidth(150f.Scale());
+
+                    ImGui.AlignTextToFramePadding();
+                    ImGui.Text(Loc.Get("ConfigTab.Termination.StopWhenInventoryFullSlots"));
+                    ImGui.SameLine();
+                    if(ImGui.InputInt("###StopWhenInventoryFullSlotsInput", ref Configuration.TerminationInventoryFreeSlots, 1, 5))
+                    {
+                        Configuration.TerminationInventoryFreeSlots = Math.Clamp(Configuration.TerminationInventoryFreeSlots, 0, 139);
+                        Configuration.Save();
+                    }
+
+                    ImGui.PopItemWidth();
+                    ImGui.Unindent();
+                }
+
 
                 MakeCommands(Loc.Get("ConfigTab.Termination.ExecuteCommandsOnTermination"), ref Configuration.ExecuteCommandsTermination,  ref Configuration.CustomCommandsTermination, ref terminationCommand, "CommandsTermination");
 

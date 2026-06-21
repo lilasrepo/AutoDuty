@@ -376,7 +376,8 @@
             Stylist,
             Lifestream,
             AntiAFK,
-            Pandora
+            Pandora,
+            GlamourLog
         }
 
         public enum ConditionType
@@ -388,6 +389,7 @@
             Job,
             ActionStatus,
             VariantPath,
+            ConditionFlag,
             Not,
             Or,
             And

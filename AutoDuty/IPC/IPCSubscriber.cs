@@ -14,11 +14,14 @@ namespace AutoDuty.IPC
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using ECommons.GameFunctions;
     using Helpers;
-    using Dalamud.Plugin;
+    using Data;
     using ECommons.IPC.Subscribers.RotationSolverReborn;
     using ECommons.IPC.Subscribers.Skippy;
+    using Lumina.Excel;
+    using Lumina.Excel.Sheets;
     using WrathCombo.API;          // ProjectReference to TC_forward/WrathCombo/WrathCombo.API (version-matched to deployed WrathCombo)
     using WrathCombo.API.Enum;
 
@@ -141,7 +144,7 @@ namespace AutoDuty.IPC
         {
             if (Configuration.AutoManageBossModAISettings)
             {
-                string role = boss ? "None" : nameof(Role.Tank);
+                string role = boss ? "None" : nameof(Enums.Role.Tank);
 
                 BossMod.Presets_AddTransientStrategy("AutoDuty",         "BossMod.Autorotation.MiscAI.StayCloseToPartyRole", "Role", role);
                 BossMod.Presets_AddTransientStrategy("AutoDuty Passive", "BossMod.Autorotation.MiscAI.StayCloseToPartyRole", "Role", role);
@@ -381,6 +384,42 @@ namespace AutoDuty.IPC
         public static bool MSQSkipEnabled() =>
             // porting-note: walk-back C#/runtime version requires LINQ Contains (no IEquatable constraint shortcut).
             IsEnabled && System.Linq.Enumerable.Contains(Skippy.GetSkippedCategories(), SkippyIPC.SkippedCategory.SkipMSQRoulette);
+    }
+
+    public static class GlamourLog_IPCSubscriber
+    {
+        // porting-note(B1, api12): the GlamourLog plugin's EzIPC subscriber is not present in walk-back
+        // ECommons, so the "Stop When Duty Gathered" glamour auto-detection is disabled on TC. IsEnabled
+        // => false neutralizes every consumer (AllStoredFromDungeon early-returns; ArmoireHelper skips).
+        // ExternalPlugin.GlamourLog enum metadata (repo URL / RequiresPlugin UI) is unaffected.
+        internal static bool IsEnabled => false;
+
+        public static List<uint> FromDungeon(uint territory) => [];
+
+        public static bool IsStored(uint itemId) => false;
+        
+        public static bool AllStoredFromDungeon(uint territoryType, bool setsOnly)
+        {
+            if (!IsEnabled)
+                return false;
+
+            ExcelSheet<MirageStoreSetItemLookup> sheet = Svc.Data.GetExcelSheet<MirageStoreSetItemLookup>();
+
+            List<(uint itemId, MirageStoreSetItemLookup sets)> items = FromDungeon(territoryType).Select(item => (item, 
+                                                                                                             sheet.TryGetRow(item, out MirageStoreSetItemLookup setItemData) ? 
+                                                                                                                 setItemData : default)).ToList();
+
+            IEnumerable<InventoryItem> inventory = InventoryHelper.GetInventorySelection([.. InventoryHelper.Bag, .. InventoryHelper.Armory]);
+
+            if(setsOnly)
+                items = items.Where(item => item.itemId == item.sets.RowId).ToList();
+
+            Svc.Log.Debug(string.Join("\n", items.Select(item => $"Item ID: {item} {IsStored(item.itemId) || inventory.Any(inv => inv.ItemId == item.itemId)}")));
+
+            return items.TrueForAll(i => 
+                                        (IsStored(i.itemId)) || // && i.sets.Item.All(si => si.RowId <= 0 || GlamourLog.IsSetComplete(si.RowId))) || 
+                                        inventory.Any(inv => inv.ItemId == i.itemId));
+        }
     }
 
 

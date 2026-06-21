@@ -1,0 +1,13 @@
+# Path-level walk-back pins for AutoDuty — see plugin_update SKILL.md.
+# Pinned 2026-06-19: BuildTab.cs is heavily TC-customized (DataId not BaseId, _arguments/_note locals
+# not upstream's _action.Arguments refactor, ImGuiNET not Dalamud.Bindings.ImGui, `var` ImRaii). Upstream
+# diverged ~1600 lines; a 3-way merge yields an inconsistent _arguments/_action.Arguments mix that won't
+# compile. TC's version is taken wholesale + the entry point renamed Draw()->DrawBuildTab() to match the
+# advanced MainWindow tab registry. Pin to keep it. See FORWARD_PORT_REFERENCE.md AutoDuty entry.
+AutoDuty/Windows/BuildTab.cs
+# Pinned 2026-06-19: AutoDuty.csproj — like bossmod's BossMod.csproj, heavily TC-customized
+# (Microsoft.NET.Sdk not Dalamud.NET.Sdk, net9 not net10, DalamudLibPath->TC_ok, explicit <Reference
+# HintPath> block for Dalamud/Lumina/Serilog/etc., ProjectReferences for ECommons/Pictomancy/WrathCombo.API
+# instead of net10-only NuGet, Version 0.0.0.311). csproj take-theirs nukes all of it every refresh
+# (NU1202 WrathCombo.API/Pictomancy + CS0246 Serilog). Pin the whole csproj.
+AutoDuty/AutoDuty.csproj

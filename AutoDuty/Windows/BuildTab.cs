@@ -55,7 +55,9 @@ namespace AutoDuty.Windows
         private static          ActionTag                 _actionTag;
         private static readonly ActionTag[]               _actionTags           = [ActionTag.None, ActionTag.Synced, ActionTag.Unsynced, ActionTag.W2W, ActionTag.Treasure];
 
-        internal static unsafe void Draw()
+        // porting-note: upstream renamed Draw() -> DrawBuildTab() (called from MainWindow tab registry).
+        // Wholesale TC BuildTab kept (proven path-builder UI); method renamed to match the advanced caller.
+        internal static unsafe void DrawBuildTab()
         {
             SetCurrentTabName("BuildTab");
             using (ImRaii.Disabled(Plugin.States.HasFlag(PluginState.Navigating) || Plugin.States.HasFlag(PluginState.Looping)))

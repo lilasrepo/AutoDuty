@@ -1,19 +1,23 @@
 namespace AutoDuty.Helpers;
 
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Plugin.Services;
 using ECommons;
 using ECommons.DalamudServices;
 using ECommons.Throttlers;
+using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using IPC;
-using Dalamud.Game.ClientState.Objects.Types;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using ECommons.GameFunctions;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using Cabinet = Lumina.Excel.Sheets.Cabinet;
+using EventHandler = FFXIVClientStructs.FFXIV.Client.Game.Event.EventHandler;
 
 internal class ArmoireHelper : ActiveHelperBase<ArmoireHelper>
 {
@@ -26,10 +30,17 @@ internal class ArmoireHelper : ActiveHelperBase<ArmoireHelper>
 
     private int  skippedEntries = 0;
 
-    private readonly uint[] armoireIDs = {2001405, 2001406, 2001407, 2005630, 2007709};
-
     internal override void Start()
     {
+        IEnumerable<InventoryItem> items = InventoryHelper.GetInventorySelection(InventoryHelper.Bag).Where(item => this.ItemToCabinetIds.ContainsKey(item.ItemId)).ToList();
+
+        if (!items.Any())
+            return;
+
+        if (GlamourLog_IPCSubscriber.IsEnabled)
+            if (items.All(item => GlamourLog_IPCSubscriber.IsStored(item.ItemId)))
+                return;
+
         base.Start();
         this.skippedEntries = 0;
     }
@@ -47,10 +58,15 @@ internal class ArmoireHelper : ActiveHelperBase<ArmoireHelper>
 
         Plugin.action = "Armoire";
 
-        if(Svc.Targets.Target == null || !this.armoireIDs.Contains(Svc.Targets.Target.DataId))
+        if(Svc.Targets.Target == null || Svc.Targets.Target.Struct()->EventHandler->Info.EventId != 720978)
         {
             this.DebugLog("Target is not the armoire.");
-            IGameObject? armoire = ObjectHelper.GetObjectByDataIds(this.armoireIDs);
+            IGameObject? armoire = Svc.Objects.OrderBy(ObjectHelper.GetDistanceToPlayer).FirstOrDefault(o =>
+                                                                                                        {
+                                                                                                            EventHandler* eventHandler = o.Struct()->EventHandler;
+                                                                                                            return eventHandler != null && eventHandler->Info.EventId == 720978;
+                                                                                                        });
+
             if (armoire != null)
             {
                 Svc.Targets.Target = armoire;
