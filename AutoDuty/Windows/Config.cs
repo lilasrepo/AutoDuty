@@ -1,4 +1,4 @@
-using AutoDuty.Helpers;
+﻿using AutoDuty.Helpers;
 using AutoDuty.IPC;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
@@ -17,28 +17,29 @@ using static AutoDuty.Windows.ConfigTab;
 
 namespace AutoDuty.Windows;
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using Dalamud.Game.ClientState.Objects.Types;
 using Data;
 using ECommons.Configuration;
 using ECommons.ExcelServices;
 using ECommons.GameFunctions;
+using ECommons.IPC.Subscribers.RotationSolverReborn;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using Lumina.Excel.Sheets;
+using Multibox;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
-using Properties;
-using System.Numerics;
-using System.Text;
-using ECommons.IPC.Subscribers.RotationSolverReborn;
-using Multibox;
 using NightmareUI.Censoring;
+using Properties;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Numerics;
+using System.Runtime.InteropServices;
+using System.Text;
 using Achievement = Lumina.Excel.Sheets.Achievement;
 using Vector2 = FFXIVClientStructs.FFXIV.Common.Math.Vector2;
 
@@ -191,7 +192,7 @@ public class ConfigurationMain : ECommons.Configuration.IEzConfig
         if (this.profileByName.ContainsKey(name))
         {
             this.activeProfileName = name;
-            EzConfig.Save();
+            Save();
             return true;
         }
         return false;
@@ -202,7 +203,7 @@ public class ConfigurationMain : ECommons.Configuration.IEzConfig
         if (this.profileByName.ContainsKey(this.ActiveProfileName))
         {
             this.DefaultConfigName = this.ActiveProfileName;
-            EzConfig.Save();
+            Save();
         }
     }
 
@@ -289,7 +290,7 @@ public class ConfigurationMain : ECommons.Configuration.IEzConfig
         config.Name                 = newName;
         this.activeProfileName      = newName;
 
-        EzConfig.Save();
+        Save();
 
         return true;
     }
@@ -317,7 +318,7 @@ public class ConfigurationMain : ECommons.Configuration.IEzConfig
                                                               Name  = Player.Name,
                                                               World = Player.CurrentWorld
                                                           };
-                                    EzConfig.Save();
+                                    Save();
 
                                     LevelingHelper.ResetLevelingDuties();
                                 });
@@ -333,11 +334,18 @@ public class ConfigurationMain : ECommons.Configuration.IEzConfig
                                     this.profileByName[this.ActiveProfileName].CIDs.Remove(cid);
                                     this.profileByCID.Remove(cid);
 
-                                    EzConfig.Save();
+                                    Save();
                                 });
 
     public static void DebugLog(string message) => 
         Svc.Log.Debug($"Configuration Main: {message}");
+
+    public static void Save()
+    {
+        if (!ConfigOverrideHelper.HasOverrides)
+            EzConfig.Save();
+    }
+
 
     public static JsonSerializerSettings JsonSerializerSettings { get; } = new()
                                                                            {
@@ -736,7 +744,8 @@ public class Configuration
     public bool AutoGCTurninSlotsLeftBool = false;
     public bool AutoGCTurninUseTicket     = false;
 
-    public bool ArmoireEntrust = false;
+    public bool ArmoireEntrust      = false;
+    public bool GlamourChestEntrust = false;
 
     public bool TripleTriadRegister;
     public bool TripleTriadSell;
@@ -760,7 +769,6 @@ public class Configuration
     public Dictionary<uint, KeyValuePair<string, int>> StopItemQtyItemDictionary     = [];
     public int                                         StopItemQtyInt                = 1;
     public bool                                        StopWhenDutyGathered          = false;
-    public bool                                        StopWhenDutyGatheredSetsOnly  = false;
     public bool                                        TerminationBLUSpellsEnabled   = false;
     public List<uint>                                  TerminationBLUSpells          = [];
     public bool                                        TerminationBLUSpellsAll       = false;
@@ -778,12 +786,15 @@ public class Configuration
     public string                                      SoundPath                    = "";
     public TerminationMode                             TerminationMethodEnum        = TerminationMode.Do_Nothing;
     public bool                                        TerminationKeepActive        = true;
-    #endregion
+	#endregion
 
-    public static void Save() => 
-        EzConfig.Save();
+	public static void Save()
+	{
+        if (!ConfigOverrideHelper.HasOverrides)
+		    EzConfig.Save();
+	}
 
-    public TrustMemberName?[] SelectedTrustMembers = new TrustMemberName?[3];
+	public TrustMemberName?[] SelectedTrustMembers = new TrustMemberName?[3];
 }
 
 public static class ConfigTab
@@ -879,6 +890,14 @@ public static class ConfigTab
             ImGui.SetTooltip(Loc.Get("ConfigTab.LanguageHelp"));
 
         ImGui.Separator();
+
+        bool overridesActive = ConfigOverrideHelper.HasOverrides;
+        if (overridesActive)
+            ImGuiEx.TextWrapped(Loc.Get("ConfigTab.Profile.ConfigOverridesActiveNote"));
+        // api13: ImRaii.Disabled() returns IEndObject; the named DisabledDisposable type upstream
+        // declares does not exist here (Cecil-verified against TC_ok/_dalamud_api13/Dalamud.dll).
+        //  binds whichever the generation returns, so this survives the next bump too.
+        using var overrideLock = ImRaii.Disabled(overridesActive);
 
         //Start of Profile Selection
         ImGui.AlignTextToFramePadding();
@@ -1428,13 +1447,13 @@ public static class ConfigTab
                     using (ImRaii.Disabled(Configuration.positionalRoleBased))
                     {
                         ImGui.SameLine(0, 10);
-                        if (ImGui.Button(Configuration.PositionalEnum.ToCustomString()))
+                        if (ImGui.Button(Configuration.PositionalEnum.ToLocalizedString()))
                             ImGui.OpenPopup("PositionalPopup");
             
                         if (ImGui.BeginPopup("PositionalPopup"))
                         {
                             foreach (Positional positional in Enum.GetValues(typeof(Positional)))
-                                if (ImGui.Selectable(positional.ToCustomString(), Configuration.PositionalEnum == positional))
+                                if (ImGui.Selectable(positional.ToLocalizedString(), Configuration.PositionalEnum == positional))
                                 {
                                     Configuration.PositionalEnum = positional;
                                     Configuration.Save();
@@ -1640,7 +1659,7 @@ public static class ConfigTab
             using (ImRaii.Disabled(!Configuration.EnablePreLoopActions))
             {
                 ImGui.Separator();
-                MakeCommands(Loc.Get("ConfigTab.PreLoop.ExecuteCommands"), ref Configuration.ExecuteCommandsPreLoop, ref Configuration.CustomCommandsPreLoop, ref preLoopCommand, "CommandsPreLoop");
+                MakeCommands("ConfigTab.PreLoop.ExecuteCommands", ref Configuration.ExecuteCommandsPreLoop, ref Configuration.CustomCommandsPreLoop, ref preLoopCommand, "CommandsPreLoop");
 
                 ImGui.Separator();
 
@@ -1992,7 +2011,7 @@ public static class ConfigTab
                 ImGuiComponents.HelpMarker(Loc.Get("ConfigTab.BetweenLoop.WaitTimeHelp"));
                 ImGui.Separator();
 
-                MakeCommands(Loc.Get("ConfigTab.BetweenLoop.ExecuteCommands"), ref Configuration.ExecuteCommandsBetweenLoop, ref Configuration.CustomCommandsBetweenLoop, ref betweenLoopCommand, "CommandsBetweenLoop");
+                MakeCommands("ConfigTab.BetweenLoop.ExecuteCommands", ref Configuration.ExecuteCommandsBetweenLoop, ref Configuration.CustomCommandsBetweenLoop, ref betweenLoopCommand, "CommandsBetweenLoop");
 
                 if (ImGui.Checkbox(Loc.Get("ConfigTab.BetweenLoop.AutoExtract"), ref Configuration.AutoExtract))
                     Configuration.Save();
@@ -2042,12 +2061,11 @@ public static class ConfigTab
                                 Configuration.Save();
                             }
 
-                            for (int i = 0; i < module->NumGearsets; i++)
+                            foreach (RaptureGearsetModule.GearsetEntry gearsetEntry in module->Entries)
                             {
-                                RaptureGearsetModule.GearsetEntry* gearset = module->GetGearset(i);
-                                if(ImGui.Selectable(gearset->NameString, Configuration.AutoOpenCoffersGearset == gearset->Id))
+                                if (module->IsValidGearset(gearsetEntry.Id) && ImGui.Selectable($"{gearsetEntry.Id+1}: {gearsetEntry.NameString}", Configuration.AutoOpenCoffersGearset == gearsetEntry.Id))
                                 {
-                                    Configuration.AutoOpenCoffersGearset = gearset->Id;
+                                    Configuration.AutoOpenCoffersGearset = gearsetEntry.Id;
                                     Configuration.Save();
                                 }
                             }
@@ -2229,7 +2247,6 @@ public static class ConfigTab
                     }
 
                 ImGui.Columns(2, "TripleTriadColumns");
-                ImGui.SetColumnWidth(0, 200 * ImGuiHelpers.GlobalScale);
                 if (ImGui.Checkbox(Loc.Get("ConfigTab.BetweenLoop.RegisterTripleTriadCards"), ref Configuration.TripleTriadRegister))
                     Configuration.Save();
                 ImGui.NextColumn();
@@ -2265,10 +2282,24 @@ public static class ConfigTab
 
                 ImGui.Columns(1);
 
-                if(ImGui.Checkbox(Loc.Get("ConfigTab.BetweenLoop.ArmoireEntrust") + "##ArmoireEntrust", ref Configuration.ArmoireEntrust))
-                    Configuration.Save();
-                ImGuiComponents.HelpMarker(Loc.Get("ConfigTab.BetweenLoop.ArmoireEntrustHelp"));
+                using (ImGuiHelper.RequiresPlugin(ExternalPlugin.GlamourLog, "EntrustGlamourLog"))
+                {
+                    ImGui.Columns(2);
 
+                    if (ImGui.Checkbox(Loc.Get("ConfigTab.BetweenLoop.GlamourEntrust") + "##GlamourEntrust", ref Configuration.GlamourChestEntrust))
+                        Configuration.Save();
+                    ImGuiComponents.HelpMarker(Loc.Get("ConfigTab.BetweenLoop.GlamourEntrustHelp"));
+
+                    ImGui.NextColumn();
+                    float x = ImGui.GetCursorPosX() - 100f.Scale();
+
+                    if (ImGui.Checkbox(Loc.Get("ConfigTab.BetweenLoop.ArmoireEntrust") + "##ArmoireEntrust", ref Configuration.ArmoireEntrust))
+                        Configuration.Save();
+                    ImGuiComponents.HelpMarker(Loc.Get("ConfigTab.BetweenLoop.ArmoireEntrustHelp"));
+                    ImGui.Columns(1);
+
+                    ImGui.SetCursorPosX(x);
+                }
 
                 using (ImGuiHelper.RequiresPlugin(ExternalPlugin.AutoRetainer, "AR", inline: true))
                 {
@@ -2452,13 +2483,6 @@ public static class ConfigTab
                         Configuration.Save();
                     ImGuiComponents.HelpMarker(Loc.Get("ConfigTab.Termination.StopWhenDutyGatheredHelp"));
                 }
-                if (Configuration.StopWhenDutyGathered)
-                {
-                    ImGui.Indent();
-                    if (ImGui.Checkbox(Loc.Get("ConfigTab.Termination.StopWhenDutyGatheredSetsOnly"), ref Configuration.StopWhenDutyGatheredSetsOnly))
-                        Configuration.Save();
-                    ImGui.Unindent();
-                }
 
                 if (ImGui.Checkbox(Loc.Get("ConfigTab.Termination.StopBLUSpell"), ref Configuration.TerminationBLUSpellsEnabled))
                     Configuration.Save();
@@ -2526,7 +2550,7 @@ public static class ConfigTab
                 }
 
 
-                MakeCommands(Loc.Get("ConfigTab.Termination.ExecuteCommandsOnTermination"), ref Configuration.ExecuteCommandsTermination,  ref Configuration.CustomCommandsTermination, ref terminationCommand, "CommandsTermination");
+                MakeCommands("ConfigTab.Termination.ExecuteCommandsOnTermination", ref Configuration.ExecuteCommandsTermination,  ref Configuration.CustomCommandsTermination, ref terminationCommand, "CommandsTermination");
 
                 if (ImGui.Checkbox(Loc.Get("ConfigTab.Termination.PlaySoundOnCompletion"), ref Configuration.PlayEndSound)) //Heavily Inspired by ChatAlerts
                     Configuration.Save();
@@ -2813,10 +2837,10 @@ public static class ConfigTab
 
         static void MakeCommands(string checkbox, ref bool execute, ref List<string> commands, ref string curCommand, string id)
         {
-            if (ImGui.Checkbox($"{checkbox}{(execute ? ":" : string.Empty)} ", ref execute))
+            if (ImGui.Checkbox($"{Loc.Get(checkbox)}{(execute ? ":" : string.Empty)} ", ref execute))
                 Configuration.Save();
 
-            ImGuiComponents.HelpMarker($"{checkbox}.\nFor example, /echo test");
+            ImGuiComponents.HelpMarker(Loc.Get(checkbox + "Help", "/echo test"));
 
             if (execute)
             {

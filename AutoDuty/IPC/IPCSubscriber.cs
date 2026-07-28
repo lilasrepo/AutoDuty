@@ -14,7 +14,6 @@ namespace AutoDuty.IPC
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using ECommons.GameFunctions;
     using Helpers;
     using Data;
@@ -140,7 +139,7 @@ namespace AutoDuty.IPC
             }
         }
 
-        public static void InBoss(bool boss)
+        public static void StayCloseToTank(bool boss)
         {
             if (Configuration.AutoManageBossModAISettings)
             {
@@ -394,36 +393,23 @@ namespace AutoDuty.IPC
         // ExternalPlugin.GlamourLog enum metadata (repo URL / RequiresPlugin UI) is unaffected.
         internal static bool IsEnabled => false;
 
+        // B1(api13): the GlamourLog plugin's EzIPC subscriber is absent from walk-back ECommons, so
+        // every member here is inert. IsEnabled => false is the single gate all consumers check
+        // first (ArmoireHelper returns at its line 32), so Busy/Entrust/FromDungeon are never
+        // reached at runtime -- they exist only so upstream's call sites compile.
         public static List<uint> FromDungeon(uint territory) => [];
+
+        public static bool Busy => false;
+
+        public static bool Entrust() => false;
 
         public static bool IsStored(uint itemId) => false;
         
-        public static bool AllStoredFromDungeon(uint territoryType, bool setsOnly)
-        {
-            if (!IsEnabled)
-                return false;
-
-            ExcelSheet<MirageStoreSetItemLookup> sheet = Svc.Data.GetExcelSheet<MirageStoreSetItemLookup>();
-
-            List<(uint itemId, MirageStoreSetItemLookup sets)> items = FromDungeon(territoryType).Select(item => (item, 
-                                                                                                             sheet.TryGetRow(item, out MirageStoreSetItemLookup setItemData) ? 
-                                                                                                                 setItemData : default)).ToList();
-
-            IEnumerable<InventoryItem> inventory = InventoryHelper.GetInventorySelection([.. InventoryHelper.Bag, .. InventoryHelper.Armory]);
-
-            if(setsOnly)
-                items = items.Where(item => item.itemId == item.sets.RowId).ToList();
-
-            Svc.Log.Debug(string.Join("\n", items.Select(item => $"Item ID: {item} {IsStored(item.itemId) || inventory.Any(inv => inv.ItemId == item.itemId)}")));
-
-            return items.TrueForAll(i => 
-                                        (IsStored(i.itemId)) || // && i.sets.Item.All(si => si.RowId <= 0 || GlamourLog.IsSetComplete(si.RowId))) || 
-                                        inventory.Any(inv => inv.ItemId == i.itemId));
-        }
+        public static bool AllStoredFromDungeon(uint territoryType) => false;
     }
 
 
-    internal class IPCSubscriber_Common
+    internal static class IPCSubscriber_Common
     {
         internal static bool IsReady(string pluginName) => DalamudReflector.TryGetDalamudPlugin(pluginName, out _, false, true);
 
