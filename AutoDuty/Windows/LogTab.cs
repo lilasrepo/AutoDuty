@@ -5,7 +5,7 @@ using Dalamud.Interface.Utility.Raii;
 using ECommons;
 using ECommons.ImGuiMethods;
 using ECommons.Throttlers;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Serilog.Events;
 using System.Numerics;
 using static AutoDuty.Updater.GitHubHelper;

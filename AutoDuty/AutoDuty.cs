@@ -33,7 +33,7 @@ using System.Numerics;
 
 namespace AutoDuty;
 
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Data;
 using ECommons.Automation.NeoTaskManager;

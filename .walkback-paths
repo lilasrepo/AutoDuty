@@ -11,3 +11,8 @@ AutoDuty/Windows/BuildTab.cs
 # instead of net10-only NuGet, Version 0.0.0.311). csproj take-theirs nukes all of it every refresh
 # (NU1202 WrathCombo.API/Pictomancy + CS0246 Serilog). Pin the whole csproj.
 AutoDuty/AutoDuty.csproj
+# Pinned 2026-07-02 (walk-back audit): packages.lock.json travels with the pinned csproj — TC's lock
+# is net9-keyed for the TC dependency set; upstream's is net10/Dalamud.NET.Sdk-keyed for packages the
+# TC csproj doesn't even reference. Merging/take-theirs'ing it is meaningless (already produced one
+# take-ours counter event); `dotnet restore` regenerates it from the pinned csproj anyway.
+AutoDuty/packages.lock.json

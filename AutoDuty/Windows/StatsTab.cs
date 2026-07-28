@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Numerics;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility.Raii;
@@ -109,7 +109,7 @@ internal static class StatsTab
         // pointer-walk via Span over SpecsCount entries.
         unsafe
         {
-            var firstSpec = (ImGuiTableColumnSortSpecs*)sortSpecs.Specs.NativePtr;
+            var firstSpec = (ImGuiTableColumnSortSpecs*)sortSpecs.Specs.Handle;
             for (int i = 0; i < sortSpecs.SpecsCount; i++)
             {
                 ImGuiTableColumnSortSpecs spec = firstSpec[i];

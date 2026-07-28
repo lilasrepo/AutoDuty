@@ -6,7 +6,7 @@
     using System.Numerics;
     using Dalamud.Interface.Utility.Raii;
     using ECommons.ExcelServices;
-    using ImGuiNET;
+    using Dalamud.Bindings.ImGui;
 
     public static class Enums
     {

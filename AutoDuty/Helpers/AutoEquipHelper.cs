@@ -171,7 +171,7 @@ namespace AutoDuty.Helpers
                             }
                             else
                             {
-                                InventoryManager.Instance()->MoveItemSlot(InventoryType.EquippedItems, (ushort)equipSlotIndex, inv, slot, 1);
+                                InventoryManager.Instance()->MoveItemSlot(InventoryType.EquippedItems, (ushort)equipSlotIndex, inv, slot, true);
                                 this.DebugLog("Moving old item to inventory");
                                 return;
                             }

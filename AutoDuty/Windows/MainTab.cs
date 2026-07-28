@@ -7,7 +7,7 @@ using ECommons.DalamudServices;
 using ECommons.ExcelServices;
 using ECommons.GameFunctions;
 using ECommons.ImGuiMethods;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 
 namespace AutoDuty.Windows
 {
@@ -454,7 +454,7 @@ namespace AutoDuty.Windows
                                         ImGui.Columns(3);
                                         using (ImRaii.Disabled(Plugin.TrustLevelingEnabled && TrustHelper.Members.Any(tm => tm.Value.Level < tm.Value.LevelCap))) DrawTrustMembers(DutySelected.Content);
 
-                                        //ImGui.Columns(3, null, false);
+                                        //ImGui.Columns(3, default, false);
                                         if (DutySelected.Content.TrustMembers.Count == 7)
                                             ImGui.NextColumn();
 

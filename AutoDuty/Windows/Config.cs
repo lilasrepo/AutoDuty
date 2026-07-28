@@ -1,6 +1,6 @@
 using AutoDuty.Helpers;
 using AutoDuty.IPC;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;

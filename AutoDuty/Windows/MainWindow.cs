@@ -1,7 +1,7 @@
 ﻿using AutoDuty.Helpers;
 using AutoDuty.IPC;
 using AutoDuty.Managers;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;

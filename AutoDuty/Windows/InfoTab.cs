@@ -1,6 +1,6 @@
 ﻿using AutoDuty.Helpers;
 using AutoDuty.Managers;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using ECommons.ImGuiMethods;
 using System.Diagnostics;
 

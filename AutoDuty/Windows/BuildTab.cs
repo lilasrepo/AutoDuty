@@ -1,7 +1,7 @@
 ﻿using AutoDuty.Data;
 using AutoDuty.Helpers;
 using AutoDuty.Managers;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;

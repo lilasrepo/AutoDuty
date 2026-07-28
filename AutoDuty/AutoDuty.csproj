@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Authors></Authors>
     <Company></Company>
-    <Version>0.0.0.312</Version>
+    <Version>0.0.0.313</Version>
     <Description>AutoDuty</Description>
     <Copyright></Copyright>
     <PackageProjectUrl></PackageProjectUrl>
@@ -21,12 +21,12 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <DalamudLibPath>$(MSBuildThisFileDirectory)..\..\..\TC_ok\_dalamud_api12\</DalamudLibPath>
+    <DalamudLibPath>$(MSBuildThisFileDirectory)..\..\..\TC_ok\_dalamud_api13\</DalamudLibPath>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   
    <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))'">
-    <DalamudLibPath>$(MSBuildThisFileDirectory)..\..\..\TC_ok\_dalamud_api12\</DalamudLibPath>
+    <DalamudLibPath>$(MSBuildThisFileDirectory)..\..\..\TC_ok\_dalamud_api13\</DalamudLibPath>
   </PropertyGroup>
   
    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -80,7 +80,7 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="DalamudPackager" Version="2.1.13" />
+    <PackageReference Include="DalamudPackager" Version="13.1.0" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Newtonsoft.Json">
@@ -91,10 +91,14 @@
       <HintPath>$(DalamudLibPath)Dalamud.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="ImGui.NET">
-      <HintPath>$(DalamudLibPath)ImGui.NET.dll</HintPath>
+    <Reference Include="Dalamud.Bindings.ImGui">
+      <HintPath>$(DalamudLibPath)Dalamud.Bindings.ImGui.dll</HintPath>
       <Private>false</Private>
     </Reference>
+        <Reference Include="Dalamud.Bindings.ImPlot">
+            <HintPath>$(DalamudLibPath)Dalamud.Bindings.ImPlot.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
     <Reference Include="Lumina">
       <HintPath>$(DalamudLibPath)Lumina.dll</HintPath>
       <Private>false</Private>
