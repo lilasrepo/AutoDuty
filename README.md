@@ -1,11 +1,11 @@
-# AutoDuty（繁中移植版 · TC12） / Traditional-Chinese Port
+# AutoDuty（繁中移植版 · TC13） / Traditional-Chinese Port
 
 > 自動幫你跑副本。<br>
 > Runs dungeons for you.
 
-**繁體中文**：這是 **[AutoDuty](https://github.com/erdelf/AutoDuty)** 的繁體中文客戶端移植版，對應 **FFXIV 7.1 / yanmucorp Dalamud API12（.NET 9）**。本專案僅做相容性移植，**非官方、非原作維護**；所有原始功能與設計著作權歸原作者 **Herculezz、erdelf**。
+**繁體中文**：這是 **[AutoDuty](https://github.com/erdelf/AutoDuty)** 的繁體中文客戶端移植版，對應 **FFXIV 7.20 / yanmucorp Dalamud API13（.NET 9）**。本專案僅做相容性移植，**非官方、非原作維護**；所有原始功能與設計著作權歸原作者 **Herculezz、erdelf**。
 
-**English**: A Traditional-Chinese-client port of **[AutoDuty](https://github.com/erdelf/AutoDuty)** targeting **FFXIV 7.1 / yanmucorp Dalamud API12 (.NET 9)**. Compatibility port only — **unofficial and not maintained by the original author**. All original work © **Herculezz, erdelf**.
+**English**: A Traditional-Chinese-client port of **[AutoDuty](https://github.com/erdelf/AutoDuty)** targeting **FFXIV 7.20 / yanmucorp Dalamud API13 (.NET 9)**. Compatibility port only — **unofficial and not maintained by the original author**. All original work © **Herculezz, erdelf**.
 
 ---
 
@@ -17,12 +17,12 @@ Automatically runs duties for you — Trust, Duty Support, Squadrons, Variants a
 
 ## 需要的前置插件 / Required plugins
 
-本插件需要以下插件才能運作（本插件庫皆提供 TC12 版）：<br>
-This plugin requires the following (all available as TC12 builds in this repo):
+本插件需要以下插件才能運作（本插件庫皆提供 TC13 版）：<br>
+This plugin requires the following (all available as TC13 builds in this repo):
 
-- **Boss Mod (TC12)** — 戰鬥處理 / combat
-- **vnavmesh (TC12)** — 自動尋路 / navigation
-- 一個循環插件（擇一）/ a rotation plugin (one of): **Wrath Combo (TC12)**、BossMod AutoRotation、RotationSolverReborn
+- **Boss Mod (TC13)** — 戰鬥處理 / combat
+- **vnavmesh (TC13)** — 自動尋路 / navigation
+- 一個循環插件（擇一）/ a rotation plugin (one of): **Wrath Combo (TC13)**、BossMod AutoRotation、RotationSolverReborn
 
 ## 安裝 / Installation
 
@@ -33,7 +33,7 @@ This plugin requires the following (all available as TC12 builds in this repo):
    ```
    https://raw.githubusercontent.com/lilasrepo/DalamudPlugins/main/pluginmaster.json
    ```
-4. 輸入 `/xlplugins`，搜尋 **AutoDuty (TC12)** → 安裝 → 啟用。
+4. 輸入 `/xlplugins`，搜尋 **AutoDuty (TC13)** → 安裝 → 啟用。
 
 **English**
 1. Launch the Traditional-Chinese client with **XIVTCLauncher**.
@@ -42,14 +42,14 @@ This plugin requires the following (all available as TC12 builds in this repo):
    ```
    https://raw.githubusercontent.com/lilasrepo/DalamudPlugins/main/pluginmaster.json
    ```
-4. Type `/xlplugins`, search **AutoDuty (TC12)** → Install → Enable.
+4. Type `/xlplugins`, search **AutoDuty (TC13)** → Install → Enable.
 
 ## 對應版本 / Compatibility
 
 | 項目 / Item | 版本 / Version |
 |---|---|
-| 遊戲 / Game | FFXIV 7.1（繁中客戶端 / TC client） |
-| Dalamud | yanmucorp API12（.NET 9） |
+| 遊戲 / Game | FFXIV 7.20（繁中客戶端 / TC client） |
+| Dalamud | yanmucorp API13（.NET 9） |
 | 移植自上游 / Ported from upstream | v0.0.0.311 |
 
 ## 原作與授權 / Credits & License
