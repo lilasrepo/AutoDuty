@@ -17,6 +17,7 @@ namespace AutoDuty.IPC
     using ECommons.GameFunctions;
     using Helpers;
     using Data;
+    using ECommons.IPC.Subscribers.AutoRetainer;
     using ECommons.IPC.Subscribers.RotationSolverReborn;
     using ECommons.IPC.Subscribers.Skippy;
     using Lumina.Excel;
@@ -41,6 +42,12 @@ namespace AutoDuty.IPC
 
         internal static void EnqueueGCInitiation() =>
             AutoRetainer.EnqueueInitiation();
+
+        internal static void EnableSingleMultiMode(MultiModeType? type) => 
+            AutoRetainer.EnableSingleMultiMode(type);
+
+        internal static bool GetMultiModeState() =>
+            AutoRetainer.GetMultiModeStatus();
 
         public static bool RetainersAvailable()
         {
@@ -139,11 +146,11 @@ namespace AutoDuty.IPC
             }
         }
 
-        public static void StayCloseToTank(bool boss)
+        public static void StayCloseToTank(bool close)
         {
             if (Configuration.AutoManageBossModAISettings)
             {
-                string role = boss ? "None" : nameof(Enums.Role.Tank);
+                string role = close ? nameof(Enums.Role.Tank) : "None";
 
                 BossMod.Presets_AddTransientStrategy("AutoDuty",         "BossMod.Autorotation.MiscAI.StayCloseToPartyRole", "Role", role);
                 BossMod.Presets_AddTransientStrategy("AutoDuty Passive", "BossMod.Autorotation.MiscAI.StayCloseToPartyRole", "Role", role);
@@ -383,6 +390,21 @@ namespace AutoDuty.IPC
         public static bool MSQSkipEnabled() =>
             // porting-note: walk-back C#/runtime version requires LINQ Contains (no IEquatable constraint shortcut).
             IsEnabled && System.Linq.Enumerable.Contains(Skippy.GetSkippedCategories(), SkippyIPC.SkippedCategory.SkipMSQRoulette);
+    }
+
+    public static class Lifestream_IPCSubscriber
+    {
+        internal static bool IsEnabled => 
+            IPCSubscriber_Common.IsReady("Lifestream");
+
+        public static void ChangeCharacter(Windows.ConfigurationMain.CharData ch) =>
+            Lifestream.ChangeCharacter(ch.Name, ch.World);
+
+        public static void ChangeCharacter(string name, string world) =>
+            Lifestream.ChangeCharacter(name, world);
+
+        public static bool IsBusy =>
+            Lifestream.IsBusy();
     }
 
     public static class GlamourLog_IPCSubscriber
