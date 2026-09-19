@@ -13,7 +13,7 @@ namespace AutoDuty.Managers
     using ECommons.GameFunctions;
     using static Data.Classes;
     //on Rewrite need to check for sufficient seals
-    internal class SquadronManager(TaskManager _taskManager)
+    public class SquadronManager(TaskManager _taskManager)
     {
 
         internal bool InteractedWithSergeant = false;
@@ -53,12 +53,12 @@ namespace AutoDuty.Managers
             _taskManager.Enqueue(() => AddonHelper.FireCallBack(captureAddon, true, 11, content.GCArmyIndex), "RegisterSquadron");
 
 
-            // porting-note(api12): the auto-member-select path (open GcArmyMemberList via callback 12,
+            // porting-note(api13): the auto-member-select path (open GcArmyMemberList via callback 12,
             // read it with the gap-filled ReaderGCArmyMemberList, pick the lowest fitting members) is gated
             // ENTIRELY behind the toggle — stricter than upstream, which opened the member list every time.
             // With the toggle OFF this falls through to TC_ok's proven flow (select mission -> queue), so the
-            // default never depends on the GcArmyMemberList AtkValue layout being identical on game 7.1.
-            if (Configuration.SquadronAssignLowestMembers)
+            // default never depends on the GcArmyMemberList AtkValue layout being identical on TC game 7.20.
+            if (Configuration.Meta.SquadronAssignLowestMembers)
             {
                 // Open member list
                 _taskManager.Enqueue(() => AddonHelper.FireCallBack(captureAddon, true, 12, content.GCArmyIndex), "RegisterSquadron-MemberList");

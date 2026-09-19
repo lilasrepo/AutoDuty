@@ -1,4 +1,5 @@
 ﻿using AutoDuty.Data;
+using AutoDuty.Configurations;
 using AutoDuty.Helpers;
 using AutoDuty.Managers;
 using Dalamud.Bindings.ImGui;

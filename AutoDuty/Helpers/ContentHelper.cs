@@ -6,12 +6,13 @@ using Lumina.Data;
 
 namespace AutoDuty.Helpers
 {
+    using Dalamud.Utility;
+    using Lumina;
+    using Lumina.Excel;
+    using Lumina.Excel.Sheets;
     using System.Collections.Generic;
     using System.Linq;
     using static Data.Classes;
-    using Dalamud.Utility;
-    using Lumina.Excel;
-    using Lumina.Excel.Sheets;
 
     internal static class ContentHelper
     {
@@ -77,13 +78,12 @@ namespace AutoDuty.Helpers
             SubrowExcelSheet<DawnContentParticipable>? listDawnParticipableContent = Svc.Data.GameData.GetSubrowExcelSheet<DawnContentParticipable>();
 
 
-            if (listContentFinderCondition == null || listDawnContent == null || listDawnParticipableContent == null) return;
+            if (listContentFinderCondition == null || listDawnContent == null || listDawnParticipableContent == null)
+                return;
 
             foreach (ContentFinderCondition contentFinderCondition in listContentFinderCondition)
             {
-
-
-                if (contentFinderCondition.ContentType.ValueNullable == null || contentFinderCondition.TerritoryType.ValueNullable?.ExVersion.ValueNullable == null || contentFinderCondition.ContentType.Value.RowId is not (2 or 4 or 5 or 20 or 30) || contentFinderCondition.Name.ToString().IsNullOrEmpty())
+                if (contentFinderCondition.ContentType.ValueNullable == null || contentFinderCondition.TerritoryType.ValueNullable?.ExVersion.ValueNullable == null || contentFinderCondition.ContentType.Value.RowId is not (2 or 4 or 5 or 20 or 30 or 40) || contentFinderCondition.Name.ToString().IsNullOrEmpty())
                     continue;
 
                 static string CleanName(string name)
@@ -136,6 +136,9 @@ namespace AutoDuty.Helpers
                     case 30 when contentFinderCondition.TerritoryType.Value.RowId.EqualsAny(ListVVDContent):
                         content.DutyModes |= DutyMode.Variant;
                         break;
+                    case 40:
+                        content.DutyModes |= DutyMode.Crucible;
+                        break;
                 }
 
                 if (contentFinderCondition.TerritoryType.Value.RowId.EqualsAny(ListGCArmyContent))
@@ -187,9 +190,9 @@ namespace AutoDuty.Helpers
                 level = PlayerHelper.GetCurrentLevelFromSheet();
 
             if (mode == DutyMode.None)
-                mode = Configuration.DutyModeEnum;
+                mode = Configuration.Meta.DutyModeEnum;
 
-            unsync ??= Configuration.Unsynced && mode.EqualsAny(DutyMode.Raid, DutyMode.Regular, DutyMode.Trial);
+            unsync ??= Configuration.Meta.Unsynced && mode.EqualsAny(DutyMode.Raid, DutyMode.Regular, DutyMode.Trial);
 
             if (unsync.Value)
                 if (content.ExVersion == 5)

@@ -19,6 +19,7 @@ using Subscribers.Gearsetter;
 using Subscribers.PandorasBox;
 using Subscribers.RotationSolverReborn;
 using Subscribers.Skippy;
+using Subscribers.SomethingNeedDoing;
 using Subscribers.Stylist;
 using Subscribers.YesAlready;
 
@@ -44,4 +45,5 @@ public static class ECommonsIPC
     public static CashFlowIPC CashFlow => field ??= new();
     public static AllaganToolsIPC AllaganTools => field ??= new();
     public static SkippyIPC Skippy => field ??= new();
+    public static SomethingNeedDoingIPC SomethingNeedDoing => field ??= new();
 }
