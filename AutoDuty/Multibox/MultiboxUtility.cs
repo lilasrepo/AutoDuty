@@ -333,7 +333,7 @@ public static class MultiboxUtility
 
                                                                 if (!PartyHelper.IsPartyMember(client.CID))
                                                                 {
-                                                                    if (client.WorldId == Player.CurrentWorldId)
+                                                                    if (client.WorldId == Player.CurrentWorld.RowId)
                                                                         InfoProxyPartyInvite.Instance()->InviteToParty(client.CID, client.CName, client.WorldId);
                                                                     else
                                                                         InfoProxyPartyInvite.Instance()->InviteToPartyContentId(client.CID, 0);
@@ -546,7 +546,7 @@ public static class MultiboxUtility
                     _ = Svc.Framework.RunOnTick(() =>
                                                 {
                                                     if (Player.CID != 0)
-                                                        clientSS.WriteString($"{CLIENT_CID_KEY}|{Player.CID}|{Player.Name}|{Player.CurrentWorldId}");
+                                                        clientSS.WriteString($"{CLIENT_CID_KEY}|{Player.CID}|{Player.Name}|{Player.CurrentWorld.RowId}");
                                                 }, cancellationToken: ct);
 
                     _ = Task.Run(() => ClientKeepAliveThread(ct), ct);

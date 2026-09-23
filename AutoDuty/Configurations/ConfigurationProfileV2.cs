@@ -318,7 +318,7 @@ public class ConfigurationProfileV2
             set
             {
                 field = value;
-                // TODO(api13): RenderDisableManager is absent from walk-back ECommons (see AutoDuty.cs stub);
+                // TODO(api13): RenderDisableManager is a no-op on TC (see AutoDuty.cs stub);
                 // the setting persists but the render-disable request is inert on TC.
                 //if (!value)
                 //    RenderDisableManager.RemoveRequest();

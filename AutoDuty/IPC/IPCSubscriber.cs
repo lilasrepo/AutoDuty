@@ -425,13 +425,13 @@ namespace AutoDuty.IPC
 
     public static class GlamourLog_IPCSubscriber
     {
-        // porting-note(B1, api12): the GlamourLog plugin's EzIPC subscriber is not present in walk-back
-        // ECommons, so the "Stop When Duty Gathered" glamour auto-detection is disabled on TC. IsEnabled
+        // porting-note(B1, api13): the GlamourLog subscriber lives in upstream ECommons.IPC, which TC's
+        // vendored ECommons.IPC predates, so the "Stop When Duty Gathered" glamour auto-detection is disabled on TC. IsEnabled
         // => false neutralizes every consumer (AllStoredFromDungeon early-returns; ArmoireHelper skips).
         // ExternalPlugin.GlamourLog enum metadata (repo URL / RequiresPlugin UI) is unaffected.
         internal static bool IsEnabled => false;
 
-        // B1(api13): the GlamourLog plugin's EzIPC subscriber is absent from walk-back ECommons, so
+        // B1(api13): the GlamourLog subscriber is absent from the vendored ECommons.IPC, so
         // every member here is inert. IsEnabled => false is the single gate all consumers check
         // first (ArmoireHelper returns at its line 32), so Busy/Entrust/FromDungeon are never
         // reached at runtime -- they exist only so upstream's call sites compile.
@@ -451,7 +451,7 @@ namespace AutoDuty.IPC
     {
         internal static bool IsReady(string pluginName) => DalamudReflector.TryGetDalamudPlugin(pluginName, out _, false, true);
 
-        internal static Version Version(string pluginName) => DalamudReflector.TryGetDalamudPlugin(pluginName, out Dalamud.Plugin.IDalamudPlugin dalamudPlugin, false, true) ? dalamudPlugin.GetType().Assembly.GetName().Version : new Version(0, 0, 0, 0);
+        internal static Version Version(string pluginName) => DalamudReflector.TryGetDalamudPlugin(pluginName, out object dalamudPlugin, false, true) ? dalamudPlugin.GetType().Assembly.GetName().Version : new Version(0, 0, 0, 0);
 
         internal static void DisposeAll(EzIPCDisposalToken[] _disposalTokens)
         {

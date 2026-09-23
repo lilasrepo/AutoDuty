@@ -397,7 +397,7 @@ public class ConfigurationMain
                                                           {
                                                               CID   = cid,
                                                               Name  = Player.Name,
-                                                              World = Player.CurrentWorld
+                                                              World = Player.CurrentWorldName
                                                           };
                                     Save();
 

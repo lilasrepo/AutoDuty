@@ -20,6 +20,7 @@ using Lumina.Excel.Sheets;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -35,6 +36,65 @@ public static unsafe partial class GenericHelpers
     private static string UidPrefix = $"{Random.Shared.Next(0, 0xFFFF):X4}";
     private static ulong UidCnt = 0;
     public static string GetTemporaryId() => $"{UidPrefix}{UidCnt++:X}";
+    
+    public static bool NextBool(this Random random)
+    {
+        return random.Next(2) == 0;
+    }
+
+    public static string[] Split(this string s, IEnumerable<string> separators, StringSplitOptions options = StringSplitOptions.None)
+    {
+        ArgumentNullException.ThrowIfNull(s);
+        ArgumentNullException.ThrowIfNull(separators);
+
+        var separatorArray = separators.Where(sep => sep != null).ToArray();
+
+        var parts = new List<string>();
+        int start = 0;
+
+        while(start <= s.Length)
+        {
+            int matchIndex = -1;
+            int matchLength = 0;
+
+            foreach(var sep in separatorArray)
+            {
+                if(sep.Length == 0) continue;
+
+                int idx = s.IndexOf(sep, start, StringComparison.Ordinal);
+                if(idx >= 0 && (matchIndex < 0 || idx < matchIndex || (idx == matchIndex && sep.Length > matchLength)))
+                {
+                    matchIndex = idx;
+                    matchLength = sep.Length;
+                }
+            }
+
+            if(matchIndex < 0)
+            {
+                parts.Add(s[start..]);
+                break;
+            }
+
+            parts.Add(s[start..matchIndex]);
+            start = matchIndex + matchLength;
+        }
+
+        if(options.HasFlag(StringSplitOptions.RemoveEmptyEntries)) parts.RemoveAll(p => p.Length == 0);
+        if(options.HasFlag(StringSplitOptions.TrimEntries)) parts = [.. parts.Select(p => p.Trim())];
+        if(options.HasFlag(StringSplitOptions.RemoveEmptyEntries) && options.HasFlag(StringSplitOptions.TrimEntries)) parts.RemoveAll(p => p.Length == 0);
+
+        return [.. parts];
+    }
+
+    public static bool ApproximatelyEquals(this Vector3 one, Vector3 two, float diff = 0.01f)
+    {
+        return Math.Abs(one.X - two.X) < diff && Math.Abs(one.Y - two.Y) < diff && Math.Abs(one.Z - two.Z) < diff;
+    }
+
+    public static bool ApproximatelyEquals(this float one, float two, float diff = 0.01f)
+    {
+        return Math.Abs(one - two) < diff;
+    }
 
     /// <summary>
     /// Returns sum of all elements in the <paramref name="sequence"/>.
@@ -371,9 +431,6 @@ public static unsafe partial class GenericHelpers
     /// <param name="obj"></param>
     /// <returns>Deserialized copy of <paramref name="obj"/></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // gap-fill 2026-08-30: upstream AutoDuty now passes JsonSerializerSettings. Signature and
-    // body copied from the newer ECommons donor; the parameter is optional, so every existing
-    // one-argument call site is unaffected.
     public static T JSONClone<T>(this T obj, JsonSerializerSettings jsonSettings = null)
     {
         return JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(obj, jsonSettings), jsonSettings);
@@ -431,6 +488,7 @@ public static unsafe partial class GenericHelpers
     /// Checks if client has commonly occuring occupied flags that block some interactions and functions.
     /// </summary>
     /// <returns></returns>
+
     public static bool IsOccupied()
     {
         return Svc.Condition[ConditionFlag.Occupied]

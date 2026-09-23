@@ -545,8 +545,7 @@ namespace AutoDuty.Windows
 
                     if (_duplicateItem)
                     {
-                        // porting-note: walk-back ECommons JSONClone is parameterless (no settings overload).
-                        PathAction clone = Plugin.Actions[_duplicateItemIndex].JSONClone();
+                        PathAction clone = Plugin.Actions[_duplicateItemIndex].JSONClone(ConfigurationMain.JsonSerializerSettings);
                         if(clone != null)
                             Plugin.Actions.Insert(_duplicateItemIndex, clone);
                         _duplicateItem = false;

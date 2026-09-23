@@ -131,12 +131,12 @@ namespace AutoDuty.Helpers
                 EzThrottler.Throttle(this.Name, 2000, true);
             }
 
-            if (this.SummoningBellGameObject != null && !SummoningBellHelper.HousingZones.Contains(Player.Territory) && ObjectHelper.GetDistanceToPlayer(this.SummoningBellGameObject) > 4)
+            if (this.SummoningBellGameObject != null && !SummoningBellHelper.HousingZones.Contains(Player.Territory.RowId) && ObjectHelper.GetDistanceToPlayer(this.SummoningBellGameObject) > 4)
             {
                 this.DebugLog("Moving Closer to Summoning Bell");
                 MovementHelper.Move(this.SummoningBellGameObject, 0.25f, 4);
             }
-            else if ((this.SummoningBellGameObject == null || SummoningBellHelper.HousingZones.Contains(Player.Territory)) && GotoHelper.State != ActionState.Running)
+            else if ((this.SummoningBellGameObject == null || SummoningBellHelper.HousingZones.Contains(Player.Territory.RowId)) && GotoHelper.State != ActionState.Running)
             {
                 this.DebugLog("Moving to Summoning Bell Location");
                 SummoningBellHelper.Invoke(this.ActionConfig.PreferredSummoningBellEnum);

@@ -191,9 +191,9 @@ public class NuiBuilder
         CurrentSection.Widgets.Add(new ImGuiWidget(this, name, (x) =>
         {
             ImGui.SetNextItemWidth(width);
-            // TODO(api12): RefStringDelegate may be a `delegate ref string V();` (API15 supports). API12 ImGui.NET InputText uses by-ref string variable.
-            var s = value() ?? "";
-            ImGui.InputText(name, ref s, maxLength);
+            // porting-note(api13): keep upstream's `ref value()`. The api12 port copied the value into a
+            // local and edited that, so the input never wrote back to the config.
+            ImGui.InputText(name, ref value(), maxLength);
         }, help));
         return this;
     }
@@ -204,9 +204,7 @@ public class NuiBuilder
         CurrentSection.Widgets.Add(new ImGuiWidget(this, name, (x) =>
         {
             ImGui.SetNextItemWidth(width);
-            // TODO(api12): API12 ImGui.NET InputFloat needs (string, ref float, step, step_fast, format).
-            var f = value();
-            ImGui.InputFloat(name, ref f, 0f, 0f, format ?? "%.3f");
+            ImGui.InputFloat(name, ref value(), 0f, 0f, format ?? "%.3f");
         }, help));
         return this;
     }

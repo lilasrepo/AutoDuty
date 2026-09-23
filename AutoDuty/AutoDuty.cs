@@ -249,10 +249,9 @@ public sealed class AutoDuty : IDalamudPlugin
             field = value;
 
 
-            // TODO(api13): RenderDisableManager (ECommons.GameFunctions, upstream 9a859875 "Disabling 3D
-            // rendering while running") is unavailable in walk-back ECommons and uses a hardcoded game-7.5
-            // Render Manager offset (230232) that is unverified on TC game 7.20. Non-essential
-            // render-disable optimization stubbed; restore once a TC-verified offset + ECommons gap-fill exist.
+            // TODO(api13): RenderDisableManager (upstream 9a859875 "Disabling 3D rendering while running")
+            // ships in ECommons 3.2.1.15, but as a no-op on TC: CS 6966 does not map
+            // Render.Manager.Is3DRenderingDisabled, so the vendored helper never gets a pointer.
             //if (Configuration.DutyConfig.DisableRenderWhileActive)
             //    if(field == PluginState.None)
             //        RenderDisableManager.RemoveRequest();
@@ -715,7 +714,7 @@ public sealed class AutoDuty : IDalamudPlugin
                                                                                                                    {
                                                                                                                        CID   = Player.CID,
                                                                                                                        Name  = Player.Name,
-                                                                                                                       World = Player.CurrentWorld
+                                                                                                                       World = Player.HomeWorldName
                                                                                                                    });
 
                                                           if (Configuration.Overlay.Show &&
@@ -767,7 +766,7 @@ public sealed class AutoDuty : IDalamudPlugin
                                 if (curAction.Name.Equals("KillInRange") && int.TryParse(curAction.Arguments[0], out int radius) && radius > 0)
                                 {
                                     uint colorU32 = ImGui.GetColorU32(new Vector4(0.4f, 0.2f, 0f, alpha*0.1f));
-                                    // TODO(api12): upstream adds p: new PctDxParams { ProjectionHeight = 5f } — walk-back Pictomancy has no PctDxParams overload (cosmetic projection height).
+                                    // TODO(api13): upstream adds p: new PctDxParams { ProjectionHeight = 5f } — the vendored Pictomancy (788bc33 content) has no PctDxParams overload (cosmetic projection height).
                                     drawList.AddCircleFilled(curAction.Position, radius, colorU32, mainColor);
                                 }
                             }
@@ -781,14 +780,14 @@ public sealed class AutoDuty : IDalamudPlugin
 
     private DateTime lastDutyStart = DateTime.MinValue;
 
-    // TODO(api12): IDutyStateEventArgs is API15-only; API12 IDutyState events expose (object? sender, ushort territory).
+    // TODO(api13): IDutyStateEventArgs is API15-only; api13 IDutyState events expose (object? sender, ushort territory).
     private void DutyState_DutyStarted(object? sender, ushort territoryType)
     {
         this.dutyState         = DutyState.DutyStarted;
         this.lastDutyStart     = DateTime.UtcNow;
         DeathHelper.deathCount = 0;
 
-        if (ContentHelper.DictionaryContent.TryGetValue(Player.Territory, out Content? content) && content.DutyModes.HasFlag(DutyMode.Regular))
+        if (ContentHelper.DictionaryContent.TryGetValue(Player.Territory.RowId, out Content? content) && content.DutyModes.HasFlag(DutyMode.Regular))
         {
             if(ConfigurationMain.Instance.dutyCountResetDate <= DateTime.UtcNow)
                 ConfigurationMain.Instance.dutyCountSinceReset.Clear();
@@ -815,7 +814,7 @@ public sealed class AutoDuty : IDalamudPlugin
 
             ConfigurationMain.StatData stats = ConfigurationMain.Instance.stats;
 
-            stats.dutyRecords.Add(new DutyDataRecord(DateTime.UtcNow, timeSpan, Player.Territory, Player.CID, InventoryHelper.CurrentItemLevel, Player.Job, DeathHelper.deathCount));
+            stats.dutyRecords.Add(new DutyDataRecord(DateTime.UtcNow, timeSpan, Player.Territory.RowId, Player.CID, InventoryHelper.CurrentItemLevel, Player.Job, DeathHelper.deathCount));
             stats.dungeonsRun++;
             ConfigurationProfileV2.Save();
             StatsTab.refilter = true;
@@ -1923,21 +1922,14 @@ public sealed class AutoDuty : IDalamudPlugin
 
     internal static void BMRoleChecks()
     {
-        // porting-note: walk-back ECommons Player.Job is enum (not RowRef<ClassJob>). Resolve via Lumina lookup.
-        JobRole walkbackPlayerJobRole()
-        {
-            ClassJob? cj = Svc.Data.GetExcelSheet<ClassJob>().GetRowOrDefault((uint)Player.Job);
-            return cj?.GetJobRole() ?? JobRole.NonCombat;
-        }
-
         //RoleBased Positional
-        if (PlayerHelper.IsValid && Configuration.DutyConfig.BossMod.PositionalRoleBased && Configuration.DutyConfig.BossMod.PositionalEnum != (walkbackPlayerJobRole() == JobRole.Melee ? Positional.Rear : Positional.Any))
+        if (PlayerHelper.IsValid && Configuration.DutyConfig.BossMod.PositionalRoleBased && Configuration.DutyConfig.BossMod.PositionalEnum != (Player.ClassJob.Value.GetJobRole() == JobRole.Melee ? Positional.Rear : Positional.Any))
         { 
-            Configuration.DutyConfig.BossMod.PositionalEnum = (walkbackPlayerJobRole() == JobRole.Melee ? Positional.Rear : Positional.Any); 
+            Configuration.DutyConfig.BossMod.PositionalEnum = (Player.ClassJob.Value.GetJobRole() == JobRole.Melee ? Positional.Rear : Positional.Any); 
             ConfigurationProfileV2.Save();
         }
 
-        ClassJob classJob = Svc.Data.GetExcelSheet<ClassJob>().GetRowOrDefault((uint)Player.Job) ?? default;
+        ClassJob classJob = Player.ClassJob.Value;
 
         //RoleBased MaxDistanceToTarget
         float maxDistanceToTarget = (classJob.GetJobRole() is JobRole.Melee or JobRole.Tank ? 
