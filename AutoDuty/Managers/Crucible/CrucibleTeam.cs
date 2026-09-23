@@ -8,6 +8,8 @@ using Newtonsoft.Json;
 
 namespace AutoDuty.Managers
 {
+    using ECommons.Throttlers;
+    using ECommons.UIHelpers.AtkReaderImplementations;
     using System;
     using System.Collections.Generic;
     using System.Globalization;
@@ -18,17 +20,27 @@ namespace AutoDuty.Managers
     public record CrucibleFamiliar
     {
         public uint   Number             { get; set; }
-        public string Name               { get; set; } = "";
-        public int    Rank               { get; set; }
+        public string Name               { get; set; } = string.Empty;
+
+        public int Rank
+        {
+            get;
+            set
+            {
+                if (value > field)
+                    field = value;
+            }
+        }
+
         public int    Hp                 { get; set; }
         public int    Strength           { get; set; }
         public int    PhysicalResistance { get; set; }
         public int    Constitution       { get; set; }
         public int    Intelligence       { get; set; }
         public int    MagicResistance    { get; set; }
-        public string Exp                { get; set; } = "";
-        public string Classification     { get; set; } = "";
-        public string Element            { get; set; } = "";
+        public string Exp                { get; set; } = string.Empty;
+        public string Classification     { get; set; } = string.Empty;
+        public string Element            { get; set; } = string.Empty;
 
         public int Score() => this.Hp + this.Strength + this.PhysicalResistance + this.Constitution + this.Intelligence + this.MagicResistance;
     }
@@ -42,27 +54,44 @@ namespace AutoDuty.Managers
 
     internal static unsafe class CrucibleTeam
     {
-        public const int TeamSize  = 10;
+        public static int TeamSize(uint? id = null) => (id ?? Plugin.CurrentTerritoryContent?.TerritoryType) switch
+        {
+            1339u => 10,
+            1340u => 12,
+            1341u => 14,
+            1342u => 12,
+            1343u => 15,
+            _ => 10
+        };
+
+
         public const int FightSize = 3;
 
         private static readonly string[]  DetailWindows = ["XBMMonsterBookDetail", "XBMPetActionDetail"];
         private static readonly TimeSpan CacheInterval = TimeSpan.FromMilliseconds(750);
 
-        private static SortedDictionary<uint, string>? sheetNames;
-
         private static SortedDictionary<uint, string> SheetNames
         {
             get
             {
-                if (sheetNames != null)
-                    return sheetNames;
+                if (field != null)
+                    return field;
 
-                sheetNames = [];
-                ExcelSheet<Pet> pets = Svc.Data.GetExcelSheet<Pet>();
-                // TODO(api13): api13 Lumina's XBMPet has no Pet-link column (only Unknown0) and the sheet is
-                // empty on TC game 7.20 anyway; Crucible familiar names stay empty. Pet sheet kept for parity.
-                _ = pets;
-                return sheetNames;
+                SortedDictionary<uint, string> names = [];
+                try
+                {
+                    ExcelSheet<Pet> pets = Svc.Data.GetExcelSheet<Pet>();
+                    foreach (RawRow familiar in Svc.Data.GetExcelSheet<RawRow>(name: "XBMPet"))
+                        if (familiar.RowId > 0 && pets.TryGetRow((uint)familiar.ReadInt32Column(0), out Pet pet) && pet.Name.ExtractText() is { Length: > 0 } name)
+                            names[familiar.RowId] = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(name);
+                }
+                catch (Exception ex)
+                {
+                    Svc.Log.Error(ex, "[Crucible] Couldn't read the XBMPet sheet; familiar names are unknown");
+                    names.Clear();
+                }
+
+                return field = names;
             }
         }
 
@@ -138,7 +167,7 @@ namespace AutoDuty.Managers
         public static List<uint> Custom()
         {
             HashSet<uint> owned = Owned().ToHashSet();
-            return AutoDuty.Configuration.Meta.Crucible.CustomTeam.Distinct().Where(owned.Contains).Take(TeamSize).ToList();
+            return AutoDuty.Configuration.Meta.Crucible.CustomTeam.Distinct().Where(owned.Contains).Take(TeamSize()).ToList();
         }
 
         public static bool SetCustomPick(uint number, bool pick)
@@ -146,7 +175,7 @@ namespace AutoDuty.Managers
             List<uint> team = Custom();
             if (pick)
             {
-                if (team.Contains(number) || team.Count >= TeamSize || !Owned().Contains(number))
+                if (team.Contains(number) || team.Count >= TeamSize() || !Owned().Contains(number))
                     return false;
                 team.Add(number);
             }
@@ -162,7 +191,7 @@ namespace AutoDuty.Managers
         private static void SaveCustom(List<uint> team)
         {
             if (!OwnershipKnown)
-                team = team.Concat(AutoDuty.Configuration.Meta.Crucible.CustomTeam.Where(x => !team.Contains(x))).Distinct().Take(TeamSize).ToList();
+                team = team.Concat(AutoDuty.Configuration.Meta.Crucible.CustomTeam.Where(x => !team.Contains(x))).Distinct().Take(TeamSize()).ToList();
 
             AutoDuty.Configuration.Meta.Crucible.CustomTeam = team;
             ConfigurationProfileV2.Save();
@@ -177,12 +206,12 @@ namespace AutoDuty.Managers
             return Owned().OrderByDescending(x => cached.TryGetValue(x, out CrucibleFamiliar? f) ? f.Rank : -1)
                           .ThenByDescending(x => cached.TryGetValue(x, out CrucibleFamiliar? f) ? f.Score() : -1)
                           .ThenBy(x => x)
-                          .Take(TeamSize)
+                          .Take(TeamSize())
                           .ToList();
         }
 
         public static List<uint> Leveling() =>
-            Owned().OrderBy(x => LevelingKey(x)).ThenBy(x => x).Take(TeamSize).ToList();
+            Owned().OrderBy(x => LevelingKey(x)).ThenBy(x => x).Take(TeamSize()).ToList();
 
         public static (int Rank, float Exp) LevelingKey(uint number, int liveRank = 0)
         {
@@ -194,8 +223,12 @@ namespace AutoDuty.Managers
         {
             IEnumerable<int> alive = Enumerable.Range(0, team.Count).Where(row => team[row].Hp == 0 || team[row].CurrentHp > 0);
 
+            /*
             if (AutoDuty.Configuration.Meta.Crucible.TeamMode == CrucibleTeamMode.Leveling)
                 alive = alive.OrderBy(row => LevelingKey(NumberFor(team[row].Name), team[row].Rank)).ThenBy(row => row);
+            */
+
+            alive = alive.OrderByDescending(row => (NumberFor(team[row].Name), team[row].Rank)).ThenBy(row => row);
 
             return alive.ToList();
         }
@@ -227,6 +260,8 @@ namespace AutoDuty.Managers
 
         public static bool RememberTeam(List<CrucibleUi.TeamRow> rows)
         {
+            Svc.Log.Debug("Crucible Team - Remember Team");
+
             bool       changed = false;
             List<uint> team    = new(rows.Count);
             foreach (CrucibleUi.TeamRow row in rows)
@@ -276,8 +311,18 @@ namespace AutoDuty.Managers
 
             Dictionary<uint, CrucibleFamiliar> familiars = Mine(true)!.Familiars;
             familiars.TryGetValue(seen.Number, out CrucibleFamiliar? before);
-            familiars[seen.Number] = seen;
-            return seen != before;
+
+            if (seen != before)
+            {
+                if(before != null)
+                    if (seen.Rank < before.Rank)
+                        return false;
+
+                familiars[seen.Number] = seen;
+                return true;
+            }
+
+            return false;
         }
 
         private static bool RememberFamiliarFromTeamRow(uint number, CrucibleUi.TeamRow row)
@@ -355,7 +400,7 @@ namespace AutoDuty.Managers
         private bool        scanChanged;
         private bool        scanRetried;
         private bool        scanClearing;
-        private int         scanCap = CrucibleTeam.TeamSize;
+        //private int         scanCap = CrucibleTeam.TeamSizeMax;
         private uint        scanRequeued;
         private int         clearTries;
 
@@ -377,7 +422,6 @@ namespace AutoDuty.Managers
             this.scanQueue      = null;
             this.scanning       = 0;
             this.scanClearing   = false;
-            this.scanCap        = CrucibleTeam.TeamSize;
             this.scanRequeued   = 0;
             this.clearTries     = 0;
             CrucibleTeam.Scanning = false;
@@ -390,11 +434,14 @@ namespace AutoDuty.Managers
             if (this.Error != null)
                 return true;
 
+            if (!EzThrottler.Throttle("CrucibleTeamRegistration", 100))
+                return false;
+
             DateTime now = DateTime.UtcNow;
 
             AtkUnitBase*              party = CrucibleUi.Ready(CrucibleUi.TeamWindow);
             List<CrucibleUi.TeamRow>? rows  = CrucibleUi.Team();
-            if (party == null || rows == null)
+            if (party == null || rows == null || party->AtkValuesCount <= 0 || !party->AtkValues[0].Bool)
                 return false;
 
             if (!this.scanDone)
@@ -428,6 +475,7 @@ namespace AutoDuty.Managers
 
             bool waitedTooLong = now - this.stepSince > StepPatience;
 
+            Svc.Log.Debug("Crucible Team - Executing step: " + this.step);
             switch (this.step)
             {
                 case Step.Plan:
@@ -497,6 +545,10 @@ namespace AutoDuty.Managers
                     if (this.goal.All(team.Contains) || now - this.signatureSince > SettleTime || waitedTooLong)
                         this.SetStep(Step.Plan, now);
                     return false;
+                case Step.AddBatch:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
 
             return false;
@@ -521,7 +573,9 @@ namespace AutoDuty.Managers
 
             if (this.scanQueue == null)
             {
-                this.scanQueue   = CrucibleTeam.MissingRanks();
+                IEnumerable<uint> showing = CrucibleUi.BestiaryShowing(notebook);
+
+                this.scanQueue   = CrucibleTeam.MissingRanks().OrderByDescending(showing.Contains).ThenBy(x => x).ToList();
                 this.scanTotal   = this.scanQueue.Count;
                 this.scanFrom    = now;
                 this.scanChanged = false;
@@ -548,7 +602,6 @@ namespace AutoDuty.Managers
                     if (teamCount > 0 && this.scanRequeued != this.scanning)
                     {
                         Svc.Log.Info($"[Crucible] The board won't take another familiar at {teamCount}; clearing it and re-reading No. {this.scanning}");
-                        this.scanCap      = Math.Min(this.scanCap, teamCount);
                         this.scanRequeued = this.scanning;
                         this.scanning     = 0;
                         this.StartScanClear(party, teamCount, now);
@@ -562,7 +615,7 @@ namespace AutoDuty.Managers
                 else if (!this.scanRetried && now - this.scanStarted > ScanRetry)
                 {
                     this.scanRetried = true;
-                    Screens.Notebook.PickEntry(notebook, SlotOf(this.scanning));
+                    Screens.Notebook.PickEntry(notebook, SlotOf(notebook, this.scanning));
                 }
 
                 return false;
@@ -571,7 +624,7 @@ namespace AutoDuty.Managers
             if (this.scanQueue.Count == 0)
                 return this.FinishScan(now);
 
-            if (teamCount >= this.scanCap)
+            if (teamCount >= Screens.PetParty.GetTeamSize(party))
             {
                 Svc.Log.Info($"[Crucible] Board is holding {teamCount}; clearing it before reading more ranks");
                 this.StartScanClear(party, teamCount, now);
@@ -583,7 +636,7 @@ namespace AutoDuty.Managers
                 return false;
 
             this.Status = $"Reading familiar ranks ({this.scanTotal - this.scanQueue.Count + 1}/{this.scanTotal})";
-            if (!Screens.Notebook.PickEntry(notebook, SlotOf(next)))
+            if (!Screens.Notebook.PickEntry(notebook, SlotOf(notebook, next)))
             {
                 Svc.Log.Warning($"[Crucible] Couldn't click No. {next} in the bestiary; skipping it");
                 this.scanQueue.Remove(next);
@@ -595,6 +648,20 @@ namespace AutoDuty.Managers
             this.scanRead    = null;
             this.scanRetried = false;
             return false;
+        }
+
+        private uint SlotOf(AtkUnitBase* notebook, uint number)
+        {
+            ReaderXBMMonsterNotebook x = new(notebook);
+
+            for (int index = 0; index < x.CurrentPageEntries.Count; index++)
+            {
+                ReaderXBMMonsterNotebook.MonsterEntry entry = x.CurrentPageEntries[index];
+                if (entry.Number == number)
+                    return (uint) index;
+            }
+
+            return 0;
         }
 
         private void StartScanClear(AtkUnitBase* party, int teamCount, DateTime now)
@@ -762,11 +829,12 @@ namespace AutoDuty.Managers
                 return false;
             }
 
-            uint showing = missing.FirstOrDefault(x => CrucibleUi.BestiaryShows(bestiary, x));
-            int  page    = showing == 0 ? -1 : PageOf(showing);
 
             this.batch.Clear();
-            this.batch.AddRange(missing.OrderBy(x => PageOf(x) == page ? 0 : 1).ThenBy(x => x));
+
+            IEnumerable<uint> showing = CrucibleUi.BestiaryShowing(bestiary);
+
+            this.batch.AddRange(missing.OrderBy(x => showing.Contains(x) ? 0 : 1).ThenBy(x => x));
             this.batchTotal = this.batch.Count;
             this.SetStep(Step.AddBatch, now);
             return false;
@@ -796,7 +864,7 @@ namespace AutoDuty.Managers
             }
 
             this.Status = $"Adding {CrucibleTeam.NameOf(next)} ({this.batchTotal - this.batch.Count + 1}/{this.batchTotal})";
-            if (!Screens.Notebook.PickEntry(bestiary, SlotOf(next)))
+            if (!Screens.Notebook.PickEntry(bestiary, SlotOf(bestiary, next)))
                 return this.Fail($"Couldn't pick No. {next} in the bestiary.");
 
             this.batch.RemoveAt(0);
@@ -811,7 +879,10 @@ namespace AutoDuty.Managers
 
             if (now - this.requestedAt > Resend)
             {
-                Screens.Notebook.ShowPage(notebook, PageOf(number));
+                Svc.Log.Debug($"Crucible Team - Switch to Page for {number}");
+                ReaderXBMMonsterNotebook monsterNotebook = new(notebook);
+
+                Screens.Notebook.ShowPage(notebook, (monsterNotebook.CurrentPage + 1) % monsterNotebook.PageCount);
                 this.requestedAt = now;
             }
 
@@ -823,12 +894,6 @@ namespace AutoDuty.Managers
             Screens.PetParty.OpenBestiary(party);
             this.requestedAt = now;
         }
-
-        private static int PageOf(uint number) =>
-            (int)(number - 1) / CrucibleUi.BestiaryPageSize;
-
-        private static uint SlotOf(uint number) =>
-            (number - 1) % CrucibleUi.BestiaryPageSize;
 
         private void SetStep(Step next, DateTime now)
         {

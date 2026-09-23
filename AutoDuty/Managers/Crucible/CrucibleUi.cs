@@ -8,7 +8,12 @@ namespace AutoDuty.Managers
     using System;
     using System.Collections.Generic;
     using System.Globalization;
+    using System.Linq;
     using System.Text.RegularExpressions;
+    using ECommons;
+    using ECommons.UIHelpers;
+    using ECommons.UIHelpers.AtkReaderImplementations;
+    using Helpers;
 
     internal static unsafe class CrucibleUi
     {
@@ -36,8 +41,6 @@ namespace AutoDuty.Managers
 
         public readonly record struct Choice(uint NodeId, uint Param, string Text);
 
-        public readonly record struct ShopEntry(int Index, uint Row, int Price, bool Bought);
-
         public static AtkUnitBase* Ready(string name)
         {
             AtkUnitBase* addon = (AtkUnitBase*)Svc.GameGui.GetAddonByName(name).Address;
@@ -50,19 +53,6 @@ namespace AutoDuty.Managers
         {
             addon = Ready(name);
             return addon != null;
-        }
-
-        public static void Fire(AtkUnitBase* addon, bool close, params int[] args)
-        {
-            AtkValue* values = stackalloc AtkValue[args.Length];
-            for (int i = 0; i < args.Length; i++)
-            {
-                values[i] = default;
-                values[i].SetInt(args[i]);
-            }
-
-            Svc.Log.Debug($"[Crucible] {addon->NameString} callback [{string.Join(", ", args)}]");
-            addon->FireCallback((uint)args.Length, values, close);
         }
 
         public static bool ClickButton(AtkUnitBase* addon, uint nodeId)
@@ -132,32 +122,6 @@ namespace AutoDuty.Managers
             return null;
         }
 
-        public static List<Choice> Choices(AtkUnitBase* addon, uint minParam)
-        {
-            List<Choice> choices = [];
-            for (int i = 0; i < addon->UldManager.NodeListCount; i++)
-            {
-                AtkResNode* node = addon->UldManager.NodeList[i];
-                if (node == null || !node->IsVisible())
-                    continue;
-
-                AtkComponentNode* component = node->GetAsAtkComponentNode();
-                if (component == null || component->Component == null)
-                    continue;
-
-                AtkEvent* evt = node->AtkEventManager.Event;
-                while (evt != null && evt->State.EventType != AtkEventType.ButtonClick)
-                    evt = evt->NextEvent;
-
-                if (evt == null || evt->Param < minParam)
-                    continue;
-
-                choices.Add(new Choice(node->NodeId, evt->Param, AllText(&component->Component->UldManager)));
-            }
-
-            return choices;
-        }
-
         public static int ContextMenuOptionCount(AtkUnitBase* menu)
         {
             int count = 0;
@@ -167,7 +131,7 @@ namespace AutoDuty.Managers
             return count;
         }
 
-        public static int SelectStringIndex(AtkUnitBase* addon, string contains)
+        public static int SelectStringIndex(AtkUnitBase* addon, params string[] contains)
         {
             AddonSelectString* select = (AddonSelectString*)addon;
             ref PopupMenu      menu   = ref select->PopupMenu.PopupMenu;
@@ -180,7 +144,7 @@ namespace AutoDuty.Managers
                     continue;
 
                 string entry = MemoryHelper.ReadSeStringNullTerminated((nint)menu.EntryNames[i].Value).TextValue;
-                if (entry.Contains(contains, StringComparison.OrdinalIgnoreCase))
+                if (contains.Any(s => entry.Contains(s, StringComparison.OrdinalIgnoreCase)))
                     return i;
             }
 
@@ -208,116 +172,60 @@ namespace AutoDuty.Managers
             return items;
         }
 
-        private static class ShopValues
-        {
-            public const int Coins      = 1; 
-            public const int StockCount = 2;
-
-            public const int StockStart   = 3;
-            public const int StockListed  = 0; 
-            public const int StockItem    = 1; 
-            public const int StockPrice   = 2; 
-            public const int StockBought  = 4; 
-
-            public const int HeldStart = 154;
-            public const int HeldItem  = 3;    
-
-            public const int GearStart = 205;
-            public const int GearOwned = 0;    
-            public const int GearItem  = 3;   
-
-            public const int Stride = 5;
-            public const int Slots  = 10;
-        }
-
         public static int ShopCoins(AtkUnitBase* shop) =>
-            shop->AtkValuesCount > ShopValues.Coins ? FirstNumber(shop->AtkValues[ShopValues.Coins].GetValueAsString()) : 0;
+            (int)new ReaderXBMContentsItemShop(shop).Coins;
 
-        public static List<ShopEntry> ShopStock(AtkUnitBase* shop)
+        public static List<ReaderXBMContentsItemShop.StockEntry> ShopStock(AtkUnitBase* shop) => 
+            new ReaderXBMContentsItemShop(shop).StockEntries;
+
+        public static HashSet<uint> ShopHeldItems(AtkUnitBase* shop) => 
+            new ReaderXBMContentsItemShop(shop).ItemEntriesValid.Select(ie => ie.Id).ToHashSet();
+
+        public static HashSet<uint> ShopOwnedGear(AtkUnitBase* shop) => 
+            new ReaderXBMContentsItemShop(shop).OwnedEntriesOwned.Select(ge => ge.Id).ToHashSet();
+
+        public static IEnumerable<uint> BestiaryShowing(AtkUnitBase* notebook)
         {
-            List<ShopEntry> stock = [];
-            if (shop->AtkValuesCount <= ShopValues.StockCount)
-                return stock;
-
-            int count = (int)AsUInt(shop->AtkValues[ShopValues.StockCount]);
-            for (int i = 0; i < count; i++)
-            {
-                int at = ShopValues.StockStart + i * ShopValues.Stride;
-                if (at + ShopValues.StockBought >= shop->AtkValuesCount)
-                    break;
-
-                uint row = AsUInt(shop->AtkValues[at + ShopValues.StockItem]);
-                if (shop->AtkValues[at + ShopValues.StockListed].Byte == 0 || row == 0)
-                    continue;
-
-                stock.Add(new ShopEntry(i, row,
-                                        FirstNumber(shop->AtkValues[at + ShopValues.StockPrice].GetValueAsString()),
-                                        shop->AtkValues[at + ShopValues.StockBought].Byte != 0));
-            }
-
-            return stock;
-        }
-
-        public static int ShopHeldItems(AtkUnitBase* shop)
-        {
-            int held = 0;
-            for (int k = 0; k < ShopValues.Slots; k++)
-            {
-                int at = ShopValues.HeldStart + k * ShopValues.Stride + ShopValues.HeldItem;
-                if (at < shop->AtkValuesCount && AsUInt(shop->AtkValues[at]) != 0)
-                    held++;
-            }
-
-            return held;
-        }
-
-        public static HashSet<uint> ShopOwnedGear(AtkUnitBase* shop)
-        {
-            HashSet<uint> owned = [];
-            for (int k = 0; k < ShopValues.Slots; k++)
-            {
-                int at = ShopValues.GearStart + k * ShopValues.Stride;
-                if (at + ShopValues.GearItem >= shop->AtkValuesCount || shop->AtkValues[at + ShopValues.GearOwned].Byte == 0)
-                    continue;
-
-                owned.Add(AsUInt(shop->AtkValues[at + ShopValues.GearItem]));
-            }
-
-            return owned;
+            ReaderXBMMonsterNotebook x = new(notebook);
+            return x.CurrentPageEntries.Select(m => m.Number);
         }
 
         public static bool BestiaryShows(AtkUnitBase* notebook, uint number)
         {
-            int slot  = (int)(number - 1) % BestiaryPageSize;
-            int label = 29 + slot * 8;
-            return label < notebook->AtkValuesCount && Digits(notebook->AtkValues[label].GetValueAsString()) == number;
+            ReaderXBMMonsterNotebook x = new(notebook);
+
+            foreach (ReaderXBMMonsterNotebook.MonsterEntry entry in x.CurrentPageEntries)
+                if (entry.Number == number)
+                    return true;
+
+            return false;
         }
 
         public static CrucibleFamiliar? BestiarySelected(AtkUnitBase* notebook)
         {
-            if (notebook->AtkValuesCount <= 273 || notebook->AtkValues[255].Byte == 0)
+            ReaderXBMMonsterNotebook reader = new(notebook);
+
+            if (notebook->AtkValuesCount <= 273 || !reader.Selected)
                 return null;
 
-            string Value(int index) => notebook->AtkValues[index].Type.ToString().Contains("String") ? notebook->AtkValues[index].GetValueAsString().Trim() : "";
-
-            uint number = (uint)Digits(Value(229));
-            int  rank   = Digits(Value(258));
+            uint number = reader.SelectedNumber;
+            int  rank   = reader.SelectedRank;
             if (number == 0 || rank == 0)
                 return null;
 
             return new CrucibleFamiliar
                    {
                        Number             = number,
-                       Name               = Value(230),
+                       Name               = reader.SelectedName.GetText(),
                        Rank               = rank,
-                       Hp                 = MaxOf(Value(259)),
-                       Exp                = Value(260),
-                       Strength           = Digits(Value(265)),
-                       PhysicalResistance = Digits(Value(267)),
-                       Constitution       = Digits(Value(269)),
-                       Intelligence       = Digits(Value(271)),
-                       MagicResistance    = Digits(Value(273)),
-                       Classification     = Value(239)
+                       Hp                 = reader.SelectedMaxHP,
+                       Exp                = reader.SelectedXP.ToString(),
+                       Strength           = reader.SelectedStrength,
+                       PhysicalResistance = reader.SelectedPhysResistance,
+                       Constitution       = reader.SelectedConstitution,
+                       Intelligence       = reader.SelectedIntelligence,
+                       MagicResistance    = reader.SelectedMagicResistance,
+                       Classification     = reader.Classification.GetText()
                    };
         }
 
@@ -474,33 +382,34 @@ namespace AutoDuty.Managers
             {
                 private const uint RestOrReturnButton = 21;
 
-                public static void Pick(AtkUnitBase* party, int row)        => Fire(party, true, 1, row);
-                public static void OpenRowMenu(AtkUnitBase* party, int row) => Fire(party, true, 2, row);
-                public static void OpenBestiary(AtkUnitBase* party)         => Fire(party, true, 5);
-                public static bool Rest(AtkUnitBase* party)                 => ClickButton(party, RestOrReturnButton);
-                public static bool Return(AtkUnitBase* party)               => ClickButton(party, RestOrReturnButton);
+                public static int  GetTeamSize(AtkUnitBase*  party)          => (int) new ReaderXBMPetParty(party).TeamSize;
+                public static void Pick(AtkUnitBase*         party, int row) => AddonHelper.FireCallBack(party, true, 1, row);
+                public static void OpenRowMenu(AtkUnitBase*  party, int row) => AddonHelper.FireCallBack(party, true, 2, row);
+                public static void OpenBestiary(AtkUnitBase* party) => AddonHelper.FireCallBack(party, true, 5);
+                public static bool Rest(AtkUnitBase*         party) => ClickButton(party, RestOrReturnButton);
+                public static bool Return(AtkUnitBase*       party) => ClickButton(party, RestOrReturnButton);
             }
 
             internal static class StageList
             {
-                public static void Highlight(AtkUnitBase* list, uint board) => Fire(list, true, 2, (int)board);
-                public static void Open(AtkUnitBase* list, uint board)      => Fire(list, true, 1, (int)board);
+                public static void Highlight(AtkUnitBase* list, uint board) => AddonHelper.FireCallBack(list, true, 2, (int)board);
+                public static void Open(AtkUnitBase*      list, uint board) => AddonHelper.FireCallBack(list, true, 1, (int)board);
             }
 
             internal static class StageDetail
             {
-                public static void Confirm(AtkUnitBase* layout) => Fire(layout, true, 8);
+                public static void Confirm(AtkUnitBase* layout) => AddonHelper.FireCallBack(layout, true, 8);
             }
 
             internal static class Notebook
             {
                 private const uint FirstEntryParam = 4;
 
-                public static void ShowPage(AtkUnitBase* notebook, int page) => Fire(notebook, true, 3, page);
+                public static void ShowPage(AtkUnitBase* notebook, uint page) => AddonHelper.FireCallBack(notebook, true, 3, page);
 
                 public static bool PickEntry(AtkUnitBase* notebook, uint slotOnPage)
                 {
-                    Fire(notebook, true, 5, (int)slotOnPage);
+                    AddonHelper.FireCallBack(notebook, true, 5, (int)slotOnPage);
                     return ClickEvent(notebook, AtkEventType.MouseDown, FirstEntryParam + slotOnPage);
                 }
             }
@@ -509,9 +418,9 @@ namespace AutoDuty.Managers
             {
                 private const int RemoveAllOption = 2;
 
-                public static void ChooseFirst(AtkUnitBase* menu)     => Fire(menu, true, 0, 0, 0);
-                public static void ChooseRemoveAll(AtkUnitBase* menu) => Fire(menu, true, 0, RemoveAllOption, 0);
-                public static void Close(AtkUnitBase* menu)           => Fire(menu, true, 0, -1, 0);
+                public static void ChooseFirst(AtkUnitBase*     menu) => AddonHelper.FireCallBack(menu, true, 0, 0,               0);
+                public static void ChooseRemoveAll(AtkUnitBase* menu) => AddonHelper.FireCallBack(menu, true, 0, RemoveAllOption, 0);
+                public static void Close(AtkUnitBase*           menu) => AddonHelper.FireCallBack(menu, true, 0, -1,              0);
             }
 
             internal static class Booty
@@ -523,7 +432,7 @@ namespace AutoDuty.Managers
             {
                 public const uint FirstItemParam = 2;
 
-                public static bool Take(AtkUnitBase* treasure, uint nodeId) => ClickButton(treasure, nodeId);
+                public static void Take(AtkUnitBase* treasure, uint nodeId) => AddonHelper.FireCallBack(treasure, true, 2, nodeId);
             }
 
             internal static class Result
@@ -533,19 +442,19 @@ namespace AutoDuty.Managers
 
             internal static class ItemShop
             {
-                public static void Buy(AtkUnitBase* shop, int index) => Fire(shop, true, 2, index);
+                public static void Buy(AtkUnitBase* shop, int index) => AddonHelper.FireCallBack(shop, true, 2, index);
 
                 public static bool Close(AtkUnitBase* shop) => ClickButton(shop, 40);
             }
 
             internal static class MainHud
             {
-                public static void OpenItemMenu(AtkUnitBase* hud, int slot) => Fire(hud, true, 6, slot);
+                public static void OpenItemMenu(AtkUnitBase* hud, int slot) => AddonHelper.FireCallBack(hud, true, 6, slot);
             }
 
             internal static class Prompt
             {
-                public static void Yes(AtkUnitBase* prompt) => Fire(prompt, true, 0);
+                public static void Yes(AtkUnitBase* prompt) => AddonHelper.FireCallBack(prompt, true, 0);
             }
         }
     }

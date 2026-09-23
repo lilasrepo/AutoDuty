@@ -11,15 +11,19 @@ using ECommons.ImGuiMethods;
 
 namespace AutoDuty.Windows;
 
+using Configurations;
 using Dalamud.Game.ClientState.Objects.Types;
 using Data;
 using ECommons.ExcelServices;
 using ECommons.GameFunctions;
 using ECommons.IPC.Subscribers.RotationSolverReborn;
+using ECommons.UIHelpers.AtkReaderImplementations;
 using FFXIVClientStructs.FFXIV.Client.Game.Event;
+using FFXIVClientStructs.FFXIV.Client.Game.InstanceContent;
 using FFXIVClientStructs.FFXIV.Client.LayoutEngine;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using FFXIVClientStructs.FFXIV.Common.Component.BGCollision;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 using FFXIVClientStructs.Interop;
 using FFXIVClientStructs.STD;
 using Lumina.Excel.Sheets;
@@ -29,8 +33,6 @@ using Properties;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Configurations;
-using FFXIVClientStructs.FFXIV.Client.Game.InstanceContent;
 using Achievement = Lumina.Excel.Sheets.Achievement;
 using Vector2 = FFXIVClientStructs.FFXIV.Common.Math.Vector2;
 
@@ -420,6 +422,56 @@ public static class ConfigTab
                             }
                         }
                     }
+                }
+
+                if (ImGui.CollapsingHeader("XBM"))
+                {
+                    ImGui.Indent();
+                    if (ImGui.CollapsingHeader("XBMBestiary"))
+                    {
+                        unsafe
+                        {
+                            if (GenericHelpers.TryGetAddonByName("XBMMonsterNotebook", out AtkUnitBase* addon))
+                            {
+                                ReaderXBMMonsterNotebook x = new(addon);
+
+                                ImGui.Text("Page: " + (x.CurrentPage + 1) + "/" + x.PageCount);
+
+                                foreach (ReaderXBMMonsterNotebook.MonsterEntry entry in x.CurrentPageEntries)
+                                    ImGui.Text($"Mob: {entry.Number} | {entry.Caught}");
+                            }
+                        }
+                    }
+
+                    if (ImGui.CollapsingHeader("XBMShop"))
+                    {
+                        unsafe
+                        {
+                            if (GenericHelpers.TryGetAddonByName("XBMContentsItemShop", out AtkUnitBase* addon))
+                            {
+                                ReaderXBMContentsItemShop x = new(addon);
+                                ImGui.Text($"Coins: {x.Coins}");
+                                ImGui.Text("Stock:");
+                                ImGui.Indent();
+                                foreach (ReaderXBMContentsItemShop.StockEntry entry in x.StockEntries)
+                                    ImGui.Text($"Shop: {entry.Listed} | {entry.Item} | {entry.PriceString} | {entry.Price} | {entry.Discounted} | {entry.Bought}");
+                                ImGui.Unindent();
+
+                                ImGui.Text("Gear:");
+                                ImGui.Indent();
+                                foreach (ReaderXBMContentsItemShop.ItemEntry entry in x.ItemEntries)
+                                    ImGui.Text($"Gear: {entry.Unk0} | {entry.Sellable} | {entry.IconId} | {entry.Id} | {entry.Name}");
+                                ImGui.Unindent();
+
+                                ImGui.Text("Owned:");
+                                ImGui.Indent();
+                                foreach (ReaderXBMContentsItemShop.GearEntry entry in x.OwnedEntriesOwned)
+                                    ImGui.Text($"Owned: {entry.Owned} | {entry.Unk2} | {entry.Id} | {entry.Name}");
+                                ImGui.Unindent();
+                            }
+                        }
+                    }
+                    ImGui.Unindent();
                 }
 
                 if (ImGui.CollapsingHeader("Sheet Check"))

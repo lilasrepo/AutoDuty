@@ -8,6 +8,9 @@ using Lumina.Excel;
 
 namespace AutoDuty.Managers
 {
+    using Dalamud.Memory;
+    using FFXIVClientStructs.FFXIV.Client.UI;
+    using Lumina.Excel.Sheets;
     using System;
     using System.Collections.Generic;
     using System.Numerics;
@@ -16,10 +19,10 @@ namespace AutoDuty.Managers
 
     public class CrucibleManager(TaskManager _taskManager)
     {
-        internal const uint LaudaTerritory = 148;
-        internal const uint LaudaDataId    = 1059316;
+        public const           uint   LaudaTerritory = 148u;
+        public static readonly uint[] LaudaDataIds   = [1059316u, 1059339u, 1059759u];
 
-        private static readonly Vector3 LaudaPosition = new(25.50f, -6.00f, 67.52f);
+        public static readonly Vector3 LaudaPosition = new(25.50f, -6.00f, 67.52f);
 
         private static readonly Dictionary<uint, uint> BoardByDuty = new()
                                                                      {
@@ -42,7 +45,7 @@ namespace AutoDuty.Managers
             ContentHelper.DictionaryContent.TryGetValue(territoryType, out Content? content) && content.DutyModes.HasFlag(DutyMode.Crucible);
 
         internal static void GotoLauda() =>
-            GotoHelper.Invoke(LaudaTerritory, [LaudaPosition], LaudaDataId, 0.25f, 4f, false, false, true);
+            GotoHelper.Invoke(LaudaTerritory, [LaudaPosition], 0.25f, 4f);
 
         internal unsafe void RegisterCrucible(Content content)
         {
@@ -64,13 +67,13 @@ namespace AutoDuty.Managers
             _taskManager.Enqueue(() => this.boardStep = 0, "RegisterCrucible-OpenBoard");
             _taskManager.Enqueue(() => this.OpenBoard(board), "RegisterCrucible-OpenBoard", new TaskManagerConfiguration(30000));
 
-            _taskManager.Enqueue(() => this.teamSetup.Start(AutoDuty.Configuration.Meta.Crucible.TeamMode), "RegisterCrucible-Team");
+            _taskManager.Enqueue(() => this.teamSetup.Start(AutoDuty.Configuration.Meta.Crucible.TeamMode), "RegisterCrucible-Team-Setup");
             _taskManager.Enqueue(() =>
                                  {
                                      bool done = this.teamSetup.Update();
                                      Plugin.action = this.teamSetup.Status;
                                      return done;
-                                 }, "RegisterCrucible-Team", new TaskManagerConfiguration(300000));
+                                 }, "RegisterCrucible-Team-Setup", new TaskManagerConfiguration(300_000));
             _taskManager.Enqueue(() =>
                                  {
                                      if (this.teamSetup.Error == null)
@@ -115,7 +118,12 @@ namespace AutoDuty.Managers
         private static string ChallengeText =>
             challengeText ??= Svc.Data.GetExcelSheet<RawRow>(name: "custom/009/CtsXbmEntrance_00976").TryGetRow(1, out RawRow row)
                                   ? row.ReadStringColumn(1).ExtractText().TrimEnd('.', '。', ' ')
-                                  : "";
+                                  : string.Empty;
+
+        private static string QuestAlternativeText =>
+            challengeText ??= Svc.Data.GetExcelSheet<CustomTalk>().TryGetRow(721872, out CustomTalk row)
+                                  ? row.MainOption.ExtractText().TrimEnd('.', '。', ' ')
+                                  : string.Empty;
 
         private static unsafe void ChooseChallenge(AtkUnitBase* menu)
         {
@@ -154,6 +162,31 @@ namespace AutoDuty.Managers
                 return false;
             }
 
+            if (CrucibleUi.TryReady("SelectIconString", out AtkUnitBase* iconMenu))
+            {
+                AddonSelectIconString * select = (AddonSelectIconString*) iconMenu;
+                ref PopupMenu           iconPopMenu = ref select->PopupMenu.PopupMenu;
+                if (iconPopMenu.EntryNames == null)
+                    return false;
+
+                for (int i = 0; i < iconPopMenu.EntryCount; i++)
+                {
+                    if (iconPopMenu.EntryNames[i].Value == null)
+                        continue;
+
+                    string entry = MemoryHelper.ReadSeStringNullTerminated((nint)iconPopMenu.EntryNames[i].Value).TextValue;
+                    
+                    if(entry.Contains(QuestAlternativeText, StringComparison.OrdinalIgnoreCase))
+                    {
+                        AddonHelper.FireCallBack(iconMenu, true, i);
+                        break;
+                    }
+                }
+
+                EzThrottler.Throttle("CrucibleOpenBoard", 600, true);
+                return false;
+            }
+
             if (CrucibleUi.TryReady("SelectString", out AtkUnitBase* menu))
             {
                 ChooseChallenge(menu);
@@ -170,7 +203,7 @@ namespace AutoDuty.Managers
             if (!PlayerHelper.IsReady)
                 return false;
 
-            if (ObjectHelper.GetObjectByDataId(LaudaDataId) is not { IsTargetable: true } lauda)
+            if (ObjectHelper.GetObjectByDataIds(o => o.IsTargetable, LaudaDataIds) is not { } lauda)
                 return false;
 
             ObjectHelper.InteractWithObject(lauda, false);

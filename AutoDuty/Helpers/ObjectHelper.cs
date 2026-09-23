@@ -41,6 +41,7 @@ namespace AutoDuty.Helpers
         internal static IGameObject? GetObjectByName(string name) => Svc.Objects.OrderBy(GetDistanceToPlayer).FirstOrDefault(o => o.Name.TextValue.Equals(name, StringComparison.CurrentCultureIgnoreCase));
 
         internal static IGameObject? GetObjectByDataId(uint id) => Svc.Objects.OrderBy(GetDistanceToPlayer).FirstOrDefault(o => o.DataId == id);
+        internal static IGameObject? GetObjectByDataIds(Func<IGameObject, bool> condition, params uint[] ids) => Svc.Objects.OrderBy(GetDistanceToPlayer).FirstOrDefault(o => ids.Contains(o.DataId) && condition(o));
         internal static IGameObject? GetObjectByDataIds(params uint[] ids) => Svc.Objects.OrderBy(GetDistanceToPlayer).FirstOrDefault(o => ids.Contains(o.DataId));
 
         internal static List<IGameObject>? GetObjectsByPartialName(string name) => [.. Svc.Objects.OrderBy(GetDistanceToPlayer).Where(o => o.Name.TextValue.Contains(name, StringComparison.CurrentCultureIgnoreCase))];
