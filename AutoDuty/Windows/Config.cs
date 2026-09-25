@@ -428,7 +428,6 @@ public static class ConfigTab
                 {
                     ImGui.Indent();
                     if (ImGui.CollapsingHeader("XBMBestiary"))
-                    {
                         unsafe
                         {
                             if (GenericHelpers.TryGetAddonByName("XBMMonsterNotebook", out AtkUnitBase* addon))
@@ -441,10 +440,8 @@ public static class ConfigTab
                                     ImGui.Text($"Mob: {entry.Number} | {entry.Caught}");
                             }
                         }
-                    }
 
                     if (ImGui.CollapsingHeader("XBMShop"))
-                    {
                         unsafe
                         {
                             if (GenericHelpers.TryGetAddonByName("XBMContentsItemShop", out AtkUnitBase* addon))
@@ -470,7 +467,57 @@ public static class ConfigTab
                                 ImGui.Unindent();
                             }
                         }
-                    }
+
+                    if (ImGui.CollapsingHeader("XBMParty"))
+                        unsafe
+                        {
+                            if (GenericHelpers.TryGetAddonByName("XBMPetParty", out AtkUnitBase* addon))
+                            {
+                                ReaderXBMPetParty x = new(addon);
+                                ImGui.Text("Pets:");
+                                ImGui.Indent();
+                                foreach (ReaderXBMPetParty.MonsterEntry entry in x.TeamEntries)
+                                    ImGui.Text($"Pet: {entry.Rank} | {entry.Name.GetText()} | {entry.Number} | {entry.Unk1} | {entry.Disabled} | {entry.FedCurrent}/{entry.FedMax}");
+                                ImGui.Unindent();
+
+                            }
+                        }
+
+                    if (ImGui.CollapsingHeader("XBMTreasure"))
+                        unsafe
+                        {
+                            if (GenericHelpers.TryGetAddonByName("XBMContentsTreasure", out AtkUnitBase* addon))
+                            {
+                                ReaderXBMContentsTreasure x = new(addon);
+                                ImGui.Text("Treasure:");
+                                ImGui.Indent();
+
+                                HashSet<uint> items = x.ItemEntriesValid.Select(ie => ie.Id).ToHashSet();
+                                HashSet<uint> gear  = x.OwnedEntriesOwned.Select(ie => ie.Id).ToHashSet();
+
+                                foreach (ReaderXBMContentsTreasure.TreasureChoice entry in x.TreasureChoices)
+                                    ImGui.Text($"Treasure: {entry.Bought} | {entry.Item} | {entry.treasureIndex} | {entry.Unk0} | gear: {CrucibleItemData.ShopGear.Contains(entry.Item)} | item: {CrucibleItemData.ShopHealing.Contains(entry.Item)} | {!entry.Bought &&
+                                        (!CrucibleItemData.ShopGear.Contains(entry.Item)    || (gear.Count  < 10 && !gear.Contains(entry.Item)))                                                                                                                      &&
+                                        (!CrucibleItemData.ShopHealing.Contains(entry.Item) || (items.Count < 10 && !items.Contains(entry.Item)))}");
+                                ImGui.Unindent();
+                            }
+                        }
+
+                    if (ImGui.CollapsingHeader("XBMBooty"))
+                        unsafe
+                        {
+                            if (GenericHelpers.TryGetAddonByName("XBMContentsBooty", out AtkUnitBase* addon))
+                            {
+                                ReaderXBMContentsBooty x = new(addon);
+                                ImGui.Text("Loot:");
+                                ImGui.Indent();
+                                foreach (ReaderXBMContentsBooty.LootChoice entry in x.LootChoices)
+                                    ImGui.Text($"Loot: {entry.Item} | {entry.Taken} | {entry.lootIndex}");
+                                ImGui.Unindent();
+
+                            }
+                        }
+
                     ImGui.Unindent();
                 }
 

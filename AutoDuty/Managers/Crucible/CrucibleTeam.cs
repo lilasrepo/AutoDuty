@@ -14,6 +14,7 @@ namespace AutoDuty.Managers
     using System.Collections.Generic;
     using System.Globalization;
     using System.Linq;
+    using ECommons;
     using Screens = CrucibleUi.Screens;
 
     [JsonObject(MemberSerialization.OptOut)]
@@ -54,15 +55,33 @@ namespace AutoDuty.Managers
 
     internal static unsafe class CrucibleTeam
     {
-        public static int TeamSize(uint? id = null) => (id ?? Plugin.CurrentTerritoryContent?.TerritoryType) switch
+        public static int TeamSize(uint? id = null, CrucibleLevelingMode? levelingMode = null)
         {
-            1339u => 10,
-            1340u => 12,
-            1341u => 14,
-            1342u => 12,
-            1343u => 15,
-            _ => 10
-        };
+            int size = (id ?? Plugin.CurrentTerritoryContent?.TerritoryType) switch
+            {
+                1339u => 10,
+                1340u => 12,
+                1341u => 14,
+                1342u => 12,
+                1343u => 15,
+                _ => 10
+            };
+
+
+            ConfigurationProfileV2.MetaConfig.CrucibleConfig crucible = ConfigurationMain.Instance.GetCurrentConfig.Meta.Crucible;
+
+            if (crucible.TeamMode != CrucibleTeamMode.Leveling)
+                return size;
+
+            return (levelingMode ?? crucible.LevelingMode) switch
+            {
+                CrucibleLevelingMode.Minus_3 => size - 3,
+                CrucibleLevelingMode.Only_3 => 3,
+                CrucibleLevelingMode.Full => size,
+                CrucibleLevelingMode.Carry_Minus_2 => size - 2,
+                _ => throw new ArgumentOutOfRangeException(nameof(levelingMode))
+            };
+        }
 
 
         public const int FightSize = 3;
@@ -157,10 +176,10 @@ namespace AutoDuty.Managers
             }
         }
 
-        public static List<uint> For(CrucibleTeamMode mode) => mode switch
+        public static List<uint> For(CrucibleTeamMode mode, bool sizeCap = true) => mode switch
         {
-            CrucibleTeamMode.Leveling    => Leveling(),
-            CrucibleTeamMode.Recommended => Recommended(),
+            CrucibleTeamMode.Leveling    => Leveling(sizeCap),
+            CrucibleTeamMode.Recommended => Recommended(sizeCap),
             _                            => Custom()
         };
 
@@ -200,18 +219,28 @@ namespace AutoDuty.Managers
         public static bool DependsOnCache(CrucibleTeamMode mode) =>
             mode is CrucibleTeamMode.Leveling or CrucibleTeamMode.Recommended;
 
-        public static List<uint> Recommended()
+        public static List<uint> Recommended(bool sizeCap)
         {
             IReadOnlyDictionary<uint, CrucibleFamiliar> cached = Familiars;
             return Owned().OrderByDescending(x => cached.TryGetValue(x, out CrucibleFamiliar? f) ? f.Rank : -1)
                           .ThenByDescending(x => cached.TryGetValue(x, out CrucibleFamiliar? f) ? f.Score() : -1)
                           .ThenBy(x => x)
-                          .Take(TeamSize())
+                          .Take(sizeCap ? TeamSize() : int.MaxValue)
                           .ToList();
         }
 
-        public static List<uint> Leveling() =>
-            Owned().OrderBy(x => LevelingKey(x)).ThenBy(x => x).Take(TeamSize()).ToList();
+        public static List<uint> Leveling(bool sizeCap)
+        {
+            CrucibleLevelingMode levelingMode = ConfigurationMain.Instance.GetCurrentConfig.Meta.Crucible.LevelingMode;
+
+            IOrderedEnumerable<uint> levelingFamiliars = Owned().OrderBy(x => LevelingKey(x)).ThenBy(x => x);
+
+            return levelingMode switch
+            {
+                CrucibleLevelingMode.Carry_Minus_2 => Recommended(sizeCap).Take(3).Concat(levelingFamiliars.Take(sizeCap ? TeamSize() - 3 : int.MaxValue)).Distinct().ToList(),
+                _ => levelingFamiliars.Take(sizeCap ? TeamSize() : int.MaxValue).ToList()
+            };
+        }
 
         public static (int Rank, float Exp) LevelingKey(uint number, int liveRank = 0)
         {
@@ -219,18 +248,14 @@ namespace AutoDuty.Managers
             return (liveRank > 0 ? liveRank : familiar?.Rank ?? 0, CrucibleUi.ExpShare(familiar?.Exp ?? ""));
         }
 
-        public static List<int> FightOrder(List<CrucibleUi.TeamRow> team)
+        public static List<ReaderXBMPetParty.MonsterEntry> FightOrder(List<ReaderXBMPetParty.MonsterEntry> team)
         {
-            IEnumerable<int> alive = Enumerable.Range(0, team.Count).Where(row => team[row].Hp == 0 || team[row].CurrentHp > 0);
-
             /*
             if (AutoDuty.Configuration.Meta.Crucible.TeamMode == CrucibleTeamMode.Leveling)
                 alive = alive.OrderBy(row => LevelingKey(NumberFor(team[row].Name), team[row].Rank)).ThenBy(row => row);
             */
 
-            alive = alive.OrderByDescending(row => (NumberFor(team[row].Name), team[row].Rank)).ThenBy(row => row);
-
-            return alive.ToList();
+            return team.Where(me => me.MaxHP == 0 || me.HP > 0).OrderByDescending(me => me.Rank).ThenBy(row => Familiars[row.Number].Score()).ToList();
         }
 
         public static void UpdateCache()
@@ -258,15 +283,15 @@ namespace AutoDuty.Managers
                 ConfigurationMain.Save();
         }
 
-        public static bool RememberTeam(List<CrucibleUi.TeamRow> rows)
+        public static bool RememberTeam(List<ReaderXBMPetParty.MonsterEntry> rows)
         {
             Svc.Log.Debug("Crucible Team - Remember Team");
 
             bool       changed = false;
             List<uint> team    = new(rows.Count);
-            foreach (CrucibleUi.TeamRow row in rows)
+            foreach (ReaderXBMPetParty.MonsterEntry row in rows)
             {
-                uint number = NumberFor(row.Name);
+                uint number = row.Number;
                 if (number == 0)
                     continue;
 
@@ -325,9 +350,9 @@ namespace AutoDuty.Managers
             return false;
         }
 
-        private static bool RememberFamiliarFromTeamRow(uint number, CrucibleUi.TeamRow row)
+        private static bool RememberFamiliarFromTeamRow(uint number, ReaderXBMPetParty.MonsterEntry row)
         {
-            if (row.Hp == 0)
+            if (row.MaxHP == 0)
                 return false;
 
             Dictionary<uint, CrucibleFamiliar> familiars = Mine(true)!.Familiars;
@@ -335,11 +360,11 @@ namespace AutoDuty.Managers
 
             CrucibleFamiliar familiar = (before ?? new CrucibleFamiliar { Number = number }) with
                                         {
-                                            Name               = row.Name,
-                                            Rank               = row.Rank,
-                                            Hp                 = row.Hp,
+                                            Name               = row.Name.GetText(),
+                                            Rank               = (int) row.Rank,
+                                            Hp                 = (int)row.MaxHP,
                                             Strength           = row.Strength,
-                                            PhysicalResistance = row.PhysicalResistance,
+                                            PhysicalResistance = row.PhysResistance,
                                             Constitution       = row.Constitution,
                                             Intelligence       = row.Intelligence,
                                             MagicResistance    = row.MagicResistance
@@ -439,8 +464,8 @@ namespace AutoDuty.Managers
 
             DateTime now = DateTime.UtcNow;
 
-            AtkUnitBase*              party = CrucibleUi.Ready(CrucibleUi.TeamWindow);
-            List<CrucibleUi.TeamRow>? rows  = CrucibleUi.Team();
+            AtkUnitBase*                          party = CrucibleUi.Ready(CrucibleUi.TeamWindow);
+            List<ReaderXBMPetParty.MonsterEntry>? rows  = CrucibleUi.Team();
             if (party == null || rows == null || party->AtkValuesCount <= 0 || !party->AtkValues[0].Bool)
                 return false;
 
@@ -457,9 +482,9 @@ namespace AutoDuty.Managers
                 return this.AddBatch(now);
 
             List<uint> team = new(rows.Count);
-            foreach (CrucibleUi.TeamRow row in rows)
+            foreach (ReaderXBMPetParty.MonsterEntry row in rows)
             {
-                uint number = CrucibleTeam.NumberFor(row.Name);
+                uint number = row.Number;
                 if (number == 0)
                     return this.Fail($"Can't tell which familiar \"{row.Name}\" is. Open its details in the bestiary once so AutoDuty learns the name.");
                 team.Add(number);

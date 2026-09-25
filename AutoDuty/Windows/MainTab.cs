@@ -913,6 +913,21 @@ namespace AutoDuty.Windows
                     ImGui.SetTooltip(Loc.Get($"MainTab.Crucible.ModesHelp.{mode}"));
             }
 
+            if(crucible.TeamMode == CrucibleTeamMode.Leveling)
+                foreach (CrucibleLevelingMode mode in Enum.GetValues<CrucibleLevelingMode>())
+                {
+                    if (mode != CrucibleLevelingMode.Full)
+                        ImGui.SameLine();
+
+                    if (ImGui.RadioButton(Loc.Get($"MainTab.Crucible.LevelingModes.{mode}"), crucible.LevelingMode == mode) && crucible.LevelingMode != mode)
+                    {
+                        crucible.LevelingMode = mode;
+                        ConfigurationProfileV2.Save();
+                    }
+                    if (ImGui.IsItemHovered())
+                        ImGui.SetTooltip(Loc.Get($"MainTab.Crucible.LevelingModesHelp.{mode}"));
+                }
+
             List<uint>                                  team   = CrucibleTeam.For(crucible.TeamMode);
             IReadOnlyDictionary<uint, CrucibleFamiliar> cached = CrucibleTeam.Familiars;
             List<uint>                                  owned  = CrucibleTeam.Owned().ToList();
@@ -925,6 +940,17 @@ namespace AutoDuty.Windows
 
                 if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                     ImGui.SetTooltip(Loc.Get("MainTab.Crucible.ClearRanksHelp"));
+
+                if (crucible is { TeamMode: CrucibleTeamMode.Custom, CustomTeam.Count: > 0 })
+                {
+                    ImGui.SameLine();
+                    using (ImRaii.Disabled(!ImGui.GetIO().KeyCtrl))
+                        if (ImGui.SmallButton(Loc.Get("MainTab.Crucible.ClearCustoms")))
+                        {
+                            crucible.CustomTeam.Clear();
+                            ConfigurationProfileV2.Save();
+                        }
+                }
 
                 if (owned.Count == 0)
                     ImGuiEx.TextWrapped(Loc.Get("MainTab.Crucible.NoFamiliars"));
@@ -946,10 +972,8 @@ namespace AutoDuty.Windows
 
             IEnumerable<uint> rows = crucible.TeamMode switch
             {
-                CrucibleTeamMode.Leveling    => owned.OrderBy(x => CrucibleTeam.LevelingKey(x)).ThenBy(x => x),
-                CrucibleTeamMode.Recommended => owned.OrderByDescending(x => cached.TryGetValue(x, out CrucibleFamiliar? f) ? f.Rank : -1)
-                                                     .ThenByDescending(x => cached.TryGetValue(x, out CrucibleFamiliar? f) ? f.Score() : -1)
-                                                     .ThenBy(x => x),
+                CrucibleTeamMode.Leveling    => CrucibleTeam.Leveling(false),
+                CrucibleTeamMode.Recommended => CrucibleTeam.Recommended(false),
                 _ => owned
             };
 

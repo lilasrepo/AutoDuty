@@ -36,11 +36,7 @@ namespace AutoDuty.Managers
         private static readonly Regex Number        = new("[0-9]+");
         private static readonly Regex GroupedNumber = new("[0-9][0-9,]*");
         private static readonly Regex LeadingGlyphs = new("^[^\\p{L}]+");
-
-        public readonly record struct TeamRow(string Name, int Rank, int Hp, int Strength, int PhysicalResistance, int Constitution, int Intelligence, int MagicResistance, int CurrentHp);
-
-        public readonly record struct Choice(uint NodeId, uint Param, string Text);
-
+        
         public static AtkUnitBase* Ready(string name)
         {
             AtkUnitBase* addon = (AtkUnitBase*)Svc.GameGui.GetAddonByName(name).Address;
@@ -229,41 +225,18 @@ namespace AutoDuty.Managers
                    };
         }
 
-        public static List<TeamRow>? Team()
+        public static List<ReaderXBMPetParty.MonsterEntry>? Team(ReaderXBMPetParty? party = null)
         {
-            AtkUnitBase* addon = Ready(TeamWindow);
-            if (addon == null)
-                return null;
-
-            AtkComponentList* list = (AtkComponentList*)addon->GetComponentByNodeId(TeamList);
-            if (list == null)
-                return null;
-
-            List<TeamRow> rows = new(list->ListLength);
-            for (int i = 0; i < list->ListLength; i++)
+            if (party == null)
             {
-                AtkComponentListItemRenderer* renderer = list->GetItemRenderer(i);
-                if (renderer == null)
+                AtkUnitBase* addon = Ready(TeamWindow);
+                if (addon == null)
                     return null;
 
-                AtkUldManager* uld  = &((AtkComponentBase*)renderer)->UldManager;
-                string         name = Text(uld, 17, visibleOnly: true);
-
-                if (name.Length == 0)
-                    break;
-
-                rows.Add(new TeamRow(name,
-                                     Digits(Text(uld, 9)),
-                                     MaxOf(Text(uld, 19)),
-                                     Digits(ComponentText(uld, 25, 3)),
-                                     Digits(ComponentText(uld, 26, 3)),
-                                     Digits(ComponentText(uld, 27, 3)),
-                                     Digits(ComponentText(uld, 28, 3)),
-                                     Digits(ComponentText(uld, 29, 3)),
-                                     CurrentOf(Text(uld, 19))));
+                party = new ReaderXBMPetParty(addon);
             }
 
-            return rows;
+            return party.TeamEntries;
         }
 
         public static CrucibleFamiliar? FamiliarDetail(string window)
@@ -425,13 +398,15 @@ namespace AutoDuty.Managers
 
             internal static class Booty
             {
-                public static bool TakeAll(AtkUnitBase* loot) => ClickButton(loot, 46);
+                public static void Close(AtkUnitBase* loot)            => AddonHelper.FireCallBack(loot, true, 0);
+                public static void TakeCoins(AtkUnitBase* loot)            => AddonHelper.FireCallBack(loot, true, 3);
+                public static void Take(AtkUnitBase*      loot, int index) => AddonHelper.FireCallBack(loot, true, 4, index);
+                public static bool TakeAll(AtkUnitBase*   loot) => ClickButton(loot, 46);
             }
 
             internal static class Treasure
             {
-                public const uint FirstItemParam = 2;
-
+                public static void Close(AtkUnitBase* treasure) => AddonHelper.FireCallBack(treasure, true, 0);
                 public static void Take(AtkUnitBase* treasure, uint nodeId) => AddonHelper.FireCallBack(treasure, true, 2, nodeId);
             }
 

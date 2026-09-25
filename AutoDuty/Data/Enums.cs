@@ -217,6 +217,15 @@
             Custom      = 2
         }
 
+        public enum CrucibleLevelingMode : int
+        {
+            Full = 0,
+            Minus_3 = 1,
+            Only_3 = 2,
+            Carry_Minus_2 = 3
+        }
+
+
         public enum LevelingMode : int
         {
             None = 0,
